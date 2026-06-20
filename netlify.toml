@@ -1,0 +1,4 @@
+[build]
+  # Sitio estático de un solo index.html: nada que compilar, se publica la raíz.
+  publish = "."
+  command = ""
