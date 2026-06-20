@@ -155,7 +155,7 @@ label.fld{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
   <button class="btngear" id="gearbtn" onclick="toggleGear()">⚙</button>
   <div class="sym"><span>○</span> <span>△</span> <span>□</span></div>
   <h1>QUINIELAZO MUNDIALISTA</h1>
-  <p>Pool del Mundial · estilo Juego del Calamar</p>
+  <p>Solo puede quedar uno</p>
 </header>
 <div id="v-rank" class="view on"></div>
 <div id="v-prons" class="view"></div>
@@ -179,7 +179,7 @@ label.fld{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 /* ============ CONFIG ============ */
 const PIN="8073";
 const SHARE=true;
-const SEED_VER="r-2026-06-20-3"; // súbelo si cambian los resultados/partidos de fábrica
+const SEED_VER="r-2026-06-21-1"; // súbelo si cambian los resultados/partidos de fábrica
 const ROUNDS=[
  {key:"r16",name:"Dieciseisavos",pts:2,size:16},
  {key:"oct",name:"Octavos",pts:4,size:8},
@@ -239,9 +239,27 @@ const J2M=[
 const J1R=["2-0","2-1","1-1","1-1","1-1","0-1","4-1","2-0","7-1","1-0","2-2","5-1","1-1","2-2","0-0","1-1","3-1","1-4","3-0","3-1","1-1","1-3","4-2","1-0"];
 const J2R=["1-1","1-0","4-1","6-0","0-1","3-0","2-0","0-1","","","4-1","","","","","","","","","","","","",""];
 function mkMatches(arr,res){return arr.map((m,i)=>({group:m[0],home:m[1],away:m[2],exact:!!m[3],tag:m[4]||"",result:(res&&res[i])||""}));}
+// Jornada 3 = emparejamiento que falta en cada grupo (complemento de J1 y J2).
+// El partido de España se marca exacto solo; el "partido de la jornada" lo elige el organizador.
+function buildJ3(){
+  const groups={};
+  [...J1M,...J2M].forEach(m=>{const g=m[0][0];const x=groups[g]||(groups[g]={teams:[],played:new Set()});
+    if(!x.teams.includes(m[1]))x.teams.push(m[1]);
+    if(!x.teams.includes(m[2]))x.teams.push(m[2]);
+    x.played.add(m[1]+"|"+m[2]);x.played.add(m[2]+"|"+m[1]);});
+  const out=[];
+  Object.keys(groups).sort().forEach(g=>{const t=groups[g].teams,used=new Set();
+    for(let i=0;i<t.length;i++)for(let j=i+1;j<t.length;j++){const a=t[i],b=t[j];
+      if(!groups[g].played.has(a+"|"+b)&&!used.has(a)&&!used.has(b)){used.add(a);used.add(b);
+        const ex=/españa/i.test(a)||/españa/i.test(b);out.push([g+"3",a,b,ex?1:0,ex?"espana":""]);}}});
+  return out;
+}
+const J3M=buildJ3();
+const J3R=J3M.map(()=>"");
 const FACTORY=[
- {clave:"J1",name:"Jornada 1",factory:true,closeTime:"",matches:mkMatches(J1M,J1R)},
- {clave:"J2",name:"Jornada 2",factory:true,closeTime:"",matches:mkMatches(J2M,J2R)}];
+ {clave:"J1",name:"Jornada 1",factory:true,closeTime:"2026-06-11T18:00:00",matches:mkMatches(J1M,J1R)},
+ {clave:"J2",name:"Jornada 2",factory:true,closeTime:"2026-06-17T18:00:00",matches:mkMatches(J2M,J2R)},
+ {clave:"J3",name:"Jornada 3",factory:true,closeTime:"",matches:mkMatches(J3M,J3R)}];
 
 /* ============ PRONÓSTICOS DE FÁBRICA (27 valores en orden de dorsal 1..27) ============ */
 const J1P=[
@@ -370,8 +388,9 @@ let ME=null, ORG=false, openAcc={}, CURTAB="rank";
 
 async function loadAll(){
   let j=pj(await sget("jornadas"),null);
-  const ver=await sget("seedver");
-  if(!j||ver!==SEED_VER){j=JSON.parse(JSON.stringify(FACTORY));await sset("jornadas",j);await sset("seedver",SEED_VER);}
+  // Sembrar SOLO si la BD está vacía: nunca sobreescribir datos compartidos por
+  // diferencia de versión (evita "guerras" entre clientes y pisar al organizador).
+  if(!j){j=JSON.parse(JSON.stringify(FACTORY));await sset("jornadas",j);await sset("seedver",SEED_VER);}
   ST.jornadas=j;
   ST.bracket=pj(await sget("bracket"),{closeTime:"",r16:[],real:{w:{},finalScore:""}});
   ST.sidebet=pj(await sget("sidebet"),{results:{}});
@@ -551,7 +570,7 @@ function renderProns(){
 
   /* --- Side bet: solo lectura (lo gestiona el organizador) --- */
   const oSB=openAcc["prsb"]!==undefined?openAcc["prsb"]:false;
-  h+=`<div class="acc ${oSB?"open":""}"><div class="h" onclick="tacc('prsb')"><div><span class="t">Side bet · premios individuales</span> <span class="meta">+10 cada acierto</span></div><span class="chev">▾</span></div><div class="b">`;
+  h+=`<div class="acc ${oSB?"open":""}"><div class="h" onclick="tacc('prsb')"><div><span class="t">Premios individuales</span> <span class="meta">+10 cada acierto</span></div><span class="chev">▾</span></div><div class="b">`;
   SIDE.forEach(([k,lbl])=>{const res=(ST.sidebet.results||{})[k];const mine=sidePick(ME,k);let chip;
     if(res){const ok=(res||"").trim().toLowerCase()===((mine||"").trim().toLowerCase());chip=ok?'<span class="chip ok">✓ 10</span>':'<span class="chip no">✗</span>';}else chip='<span class="chip wait">···</span>';
     h+=`<div class="kvr"><span>${lbl}</span><span>${esc(mine||"—")} ${chip}</span></div>`;});
@@ -653,7 +672,7 @@ function renderRules(){
   <div class="kvr"><span>El 1X2 sigue contando (1 pt). Sin partido de jornada ni España.</span><b></b></div>
   <div class="subhead">Bonus final (marcador exacto)</div>
   <div class="kvr"><span>Exacto / dif / ganador</span><b>10 / 5 / 2</b></div>
-  <div class="subhead">Side bet (al final, +10 cada uno)</div>
+  <div class="subhead">Premios individuales (al final, +10 cada uno)</div>
   <div class="kvr"><span>Equipo menos goleado · más goleador</span><b>+10</b></div>
   <div class="kvr"><span>Balón de Oro · Bota de Oro · Mejor joven</span><b>+10</b></div>
   </div>
@@ -669,7 +688,7 @@ function renderOrg(){
     <label class="fld">PIN</label><input id="pin" type="password" inputmode="numeric" placeholder="••••">
     <button class="btn" style="margin-top:10px" onclick="checkPin()">Entrar</button>
     <p class="muted">Solo para organizadores.</p></div>`;return;}
-  let h='<div class="card"><h2 class="sec">⚙ Organizador</h2><p class="muted">Mete resultados, gestiona jornadas, el cuadro y el side bet. El ranking se actualiza solo.</p></div>';
+  let h='<div class="card"><h2 class="sec">⚙ Organizador</h2><p class="muted">Mete resultados, gestiona jornadas, el cuadro y los premios individuales. El ranking se actualiza solo.</p></div>';
   h+='<div class="card"><div class="subhead" style="margin-top:0">Resultados</div>';
   ST.jornadas.slice().reverse().forEach((j,ri)=>{
     const done=j.matches.filter(m=>m.result).length;
@@ -714,14 +733,14 @@ function renderOrg(){
   }
   h+='</div>';
   const sr=ST.sidebet.results||{};
-  h+='<div class="card"><div class="subhead" style="margin-top:0">Resultados side bet</div>';
+  h+='<div class="card"><div class="subhead" style="margin-top:0">Resultados de premios individuales</div>';
   SIDE.forEach(([k,lbl])=>{h+=`<label class="fld">${lbl}</label><input data-sb="${k}" value="${esc(sr[k]||"")}">`;});
-  h+='<button class="btn" style="margin-top:12px" onclick="saveSide()">Guardar side bet</button></div>';
-  h+='<div class="card"><div class="subhead" style="margin-top:0">Side bet de un jugador (completar / corregir)</div>';
+  h+='<button class="btn" style="margin-top:12px" onclick="saveSide()">Guardar premios</button></div>';
+  h+='<div class="card"><div class="subhead" style="margin-top:0">Premios individuales de un jugador (completar / corregir)</div>';
   h+='<p class="muted">Rellena a quien le falte (p. ej. Jorge Aguilar) o corrige cualquiera. Los jugadores no pueden editarlo.</p>';
   h+=`<select id="sbpsel" onchange="loadOrgSide()"><option value="">— elige jugador —</option>${sortedPlayers().map(p=>`<option value="${p.id}">#${pad(p.dorsal)} · ${esc(p.name)}</option>`).join("")}</select>`;
   SIDE.forEach(([k,lbl])=>{h+=`<label class="fld">${lbl}</label><input data-osb="${k}" value="">`;});
-  h+='<button class="btn" style="margin-top:12px" onclick="saveOrgSide()">Guardar side bet del jugador</button></div>';
+  h+='<button class="btn" style="margin-top:12px" onclick="saveOrgSide()">Guardar premios del jugador</button></div>';
   h+='<button class="btn ghost" onclick="ORG=false;renderActive()">Salir del modo organizador</button>';
   $("v-org").innerHTML=h;
   brHint();
@@ -785,12 +804,12 @@ async function resetBracket(){if(!confirm("¿Borrar todo el cuadro y los pronós
   for(const id in ST.pdata){if(ST.pdata[id].bracket){ST.pdata[id].bracket={picks:{},bonus:""};await savePlayer(id);}}
   toast("Cuadro reiniciado");renderActive();}
 async function saveSide(){const r={};document.querySelectorAll("[data-sb]").forEach(i=>r[i.dataset.sb]=i.value.trim());
-  ST.sidebet.results=r;const ok=await sset("sidebet",ST.sidebet);toast(ok?"✓ Side bet guardado":"⚠ Publica la app para guardar");renderActive();}
+  ST.sidebet.results=r;const ok=await sset("sidebet",ST.sidebet);toast(ok?"✓ Premios guardados":"⚠ Publica la app para guardar");renderActive();}
 function loadOrgSide(){const id=+$("sbpsel").value;document.querySelectorAll("[data-osb]").forEach(i=>{i.value=id?sidePick(id,i.dataset.osb):"";});}
 async function saveOrgSide(){const id=+$("sbpsel").value;if(!id){toast("Elige un jugador");return;}
   const pd=pdataOf(id);pd.sidebet=pd.sidebet||{};
   document.querySelectorAll("[data-osb]").forEach(i=>pd.sidebet[i.dataset.osb]=i.value.trim());
-  const ok=await savePlayer(id);toast(ok?"✓ Side bet del jugador guardado":"⚠ Error al guardar");}
+  const ok=await savePlayer(id);toast(ok?"✓ Premios del jugador guardados":"⚠ Error al guardar");}
 
 /* ============ INIT ============ */
 async function init(){
