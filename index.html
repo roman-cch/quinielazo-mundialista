@@ -90,12 +90,15 @@ h2.sec{font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--pi
 select,input{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:10px;font-size:15px;width:100%;font-family:inherit}
 select:focus,input:focus{outline:none;border-color:var(--pink)}
 .row{display:flex;gap:8px;align-items:center}
-.btn{background:linear-gradient(160deg,var(--pink2),var(--pink) 70%,#c41463);color:#fff;border:0;border-radius:12px;padding:13px 14px;font-size:15px;font-weight:700;width:100%;letter-spacing:.3px;
-  box-shadow:0 6px 18px rgba(237,27,118,.38),0 0 16px rgba(255,46,142,.3),0 1px 0 rgba(255,255,255,.22) inset;transition:transform .15s,box-shadow .15s}
-.btn:active{transform:scale(.98);box-shadow:0 3px 10px rgba(237,27,118,.35)}
-.btn.alt{background:linear-gradient(160deg,var(--teal2),var(--teal) 60%,var(--blue));box-shadow:0 6px 18px rgba(31,184,155,.34),0 0 16px rgba(91,124,255,.3),0 1px 0 rgba(255,255,255,.22) inset}
-.btn.ghost{background:var(--panel2);border:1px solid var(--line);color:var(--txt);box-shadow:none}
-.btn.danger{background:#3a1620;border:1px solid #ff557755;color:#ff8aa3;box-shadow:none}
+/* Botones translúcidos con brillo bajo, a juego con las píldoras */
+.btn{background:linear-gradient(180deg,rgba(237,27,118,.32),rgba(138,26,208,.24));color:#fff;border:1px solid rgba(255,46,142,.55);border-radius:14px;padding:14px 16px;font-size:15px;font-weight:700;width:100%;letter-spacing:.3px;
+  backdrop-filter:blur(8px) saturate(1.3);-webkit-backdrop-filter:blur(8px) saturate(1.3);
+  box-shadow:0 2px 9px rgba(0,0,0,.3),0 0 12px rgba(237,27,118,.16),0 1px 0 rgba(255,255,255,.26) inset;transition:transform .15s,box-shadow .18s}
+.btn:active{transform:scale(.98)}
+.btn.alt{background:linear-gradient(180deg,rgba(31,184,155,.32),rgba(58,91,217,.24));border-color:rgba(21,214,168,.55);
+  box-shadow:0 2px 9px rgba(0,0,0,.3),0 0 12px rgba(31,184,155,.16),0 1px 0 rgba(255,255,255,.26) inset}
+.btn.ghost{background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--txt);box-shadow:0 2px 8px rgba(0,0,0,.25);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.btn.danger{background:rgba(255,85,119,.14);border:1px solid rgba(255,85,119,.45);color:#ff9db1;box-shadow:0 2px 8px rgba(0,0,0,.25)}
 .muted{color:var(--mut);font-size:12px}
 .podium{display:flex;align-items:flex-end;justify-content:center;gap:8px;margin:6px 0 14px}
 .pod{flex:1;max-width:130px;background:var(--panel2);border:1px solid var(--line);border-radius:12px 12px 0 0;text-align:center;padding:10px 6px}
@@ -173,12 +176,14 @@ label.fld{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 </header>
 <div id="v-rank" class="view on"></div>
 <div id="v-prons" class="view"></div>
+<div id="v-manual" class="view"></div>
 <div id="v-rules" class="view"></div>
 <div id="v-org" class="view"></div>
 </div>
 <div id="gearwrap" class="gearwrap" hidden>
   <div class="gearback" onclick="toggleGear()"></div>
   <div class="gearmenu">
+    <button onclick="goExtra('manual')"><span class="gi">≡</span> Manual de uso</button>
     <button onclick="goExtra('rules')"><span class="gi">⚑</span> Reglas y premios</button>
     <button onclick="goExtra('org')"><span class="gi">⚙</span> Organizador</button>
   </div>
@@ -489,14 +494,14 @@ function toast(t){const e=$("toast");e.textContent=t;e.classList.add("show");cle
 function playerOptions(sel){return '<option value="">— elige tu nombre —</option>'+sortedPlayers().map(p=>`<option value="${p.id}" ${p.id==sel?"selected":""}>#${pad(p.dorsal)} · ${esc(p.name)}</option>`).join("");}
 function go(t){CURTAB=t;
   document.querySelectorAll(".tabbar button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));
-  ["rank","prons","rules","org"].forEach(v=>$("v-"+v).classList.toggle("on",v===t));
+  ["rank","prons","manual","rules","org"].forEach(v=>$("v-"+v).classList.toggle("on",v===t));
   const gw=$("gearwrap");if(gw)gw.hidden=true;
-  const gb=$("gearbtn");if(gb)gb.classList.toggle("on",t==="rules"||t==="org");
+  const gb=$("gearbtn");if(gb)gb.classList.toggle("on",t==="manual"||t==="rules"||t==="org");
   render(t);window.scrollTo(0,0);}
 function toggleGear(){const gw=$("gearwrap");if(gw)gw.hidden=!gw.hidden;}
 function goExtra(t){const gw=$("gearwrap");if(gw)gw.hidden=true;go(t);}
 function toggleFs(){const d=document.documentElement;if(!document.fullscreenElement){(d.requestFullscreen||d.webkitRequestFullscreen||(()=>{})).call(d);}else{(document.exitFullscreen||(()=>{})).call(document);}}
-function render(t){({rank:renderRank,prons:renderProns,rules:renderRules,org:renderOrg}[t]||renderRank)();}
+function render(t){({rank:renderRank,prons:renderProns,manual:renderManual,rules:renderRules,org:renderOrg}[t]||renderRank)();}
 function renderActive(){render(CURTAB);}
 function tacc(k){openAcc[k]=!(openAcc[k]===undefined?false:openAcc[k]);renderActive();}
 function fmt(iso){try{return new Date(iso).toLocaleString("es-ES",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});}catch(e){return iso;}}
@@ -668,6 +673,43 @@ function pickBr(r,i,tm){const pd=pdataOf(ME);pd.bracket=pd.bracket||{picks:{},bo
 async function saveBracket(){
   if(ST.bracket.closeTime&&new Date(ST.bracket.closeTime)<new Date()){toast("Cuadro cerrado: ya no se puede guardar");renderActive();return;}
   const pd=pdataOf(ME);const h=$("bonh").value,a=$("bona").value;if(h!==""&&a!=="")pd.bracket.bonus=h+"-"+a;const ok=await savePlayer(ME);toast(ok?"✓ Cuadro guardado":"▲ Publica la app para guardar");}
+
+/* ============ MANUAL DE USO ============ */
+function renderManual(){
+  $("v-manual").innerHTML=`<div class="card"><h2 class="sec">≡ Manual de uso</h2>
+    <p class="muted">Cómo funciona la plataforma, paso a paso. Para las reglas y la puntuación al detalle, mira <b>Reglas y premios</b> en este mismo menú (⚙).</p></div>
+
+  <div class="card"><div class="subhead" style="margin-top:0">1 · Empezar a jugar</div>
+    <div class="kvr"><span>Entra en <b>Pronósticos</b> (abajo)</span><b>△</b></div>
+    <div class="kvr"><span>Arriba, elige tu nombre en el desplegable</span><b>quién soy</b></div>
+    <p class="muted">El dispositivo recuerda tu nombre; no hace falta cuenta de nada. Cada jornada y cada ronda es un acordeón: tócalo para abrirlo.</p></div>
+
+  <div class="card"><div class="subhead" style="margin-top:0">2 · Jornadas (fase de grupos)</div>
+    <div class="kvr"><span><span class="st st-edit">ABIERTA</span> antes de la hora de cierre</span><b>editable</b></div>
+    <div class="kvr"><span>Marca <b>1 / X / 2</b> en cada partido y pulsa <b>Guardar mi quiniela</b></span><b></b></div>
+    <div class="kvr"><span>Partidos ★ (España y el de la jornada): marcador <b>exacto</b></span><b>5/3/1</b></div>
+    <div class="kvr"><span><span class="st st-lock">CERRADA</span> tras la hora de cierre</span><b>solo lectura</b></div>
+    <p class="muted">Cuando cierra, ya no se puede tocar. A partir de ahí verás tus aciertos y tus puntos, que se actualizan solos según el organizador mete resultados.</p></div>
+
+  <div class="card"><div class="subhead" style="margin-top:0">3 · Fase eliminatoria</div>
+    <p class="muted">Cuando el organizador active el cuadro, aparecerán las rondas (Dieciseisavos → Final) como acordeones dentro de Pronósticos. En cada cruce, pulsa el equipo que crees que <b>pasa</b>. Si cambias un cruce anterior, los siguientes que dependían se reinician.</p>
+    <div class="kvr"><span>Bonus final · marcador exacto de la final</span><b>10/5/2</b></div></div>
+
+  <div class="card"><div class="subhead" style="margin-top:0">4 · Premios individuales</div>
+    <p class="muted">Balón de Oro, Bota de Oro, mejor joven, equipo más y menos goleado. Ya están cargados y son <b>solo lectura</b> (+10 por acierto, se resuelven al final). Si te falta alguno, díselo al organizador.</p></div>
+
+  <div class="card"><div class="subhead" style="margin-top:0">5 · Ranking</div>
+    <p class="muted">La pestaña <b>Ranking</b> muestra la clasificación en vivo, el podio y el mejor de cada jornada (premio de 10€). Se actualiza solo en cuanto entran resultados.</p></div>
+
+  <div class="card"><div class="subhead" style="margin-top:0">6 · Organizador (⚙)</div>
+    <p class="muted">Protegido por PIN. Desde ahí se gestiona todo:</p>
+    <div class="kvr"><span><b>Resultados</b> de cada jornada</span><b>1/x/2 o marcador</b></div>
+    <div class="kvr"><span><b>Crear o editar jornada</b> (partidos, ★ exacto, hora de cierre)</span><b></b></div>
+    <div class="kvr"><span><b>Cuadro</b>: pegar los cruces de la 1ª ronda y su cierre</span><b></b></div>
+    <div class="kvr"><span><b>Resultados reales</b> de la eliminatoria y de la final</span><b></b></div>
+    <div class="kvr"><span><b>Premios individuales</b>: resultados y completar el de un jugador</span><b></b></div>
+    <p class="muted">El ranking y los puntos de todos se recalculan automáticamente al guardar.</p></div>`;
+}
 
 /* ============ REGLAS ============ */
 function renderRules(){
