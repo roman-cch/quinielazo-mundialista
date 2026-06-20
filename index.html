@@ -9,6 +9,9 @@
 <meta name="apple-mobile-web-app-title" content="Quinielazo">
 <meta name="theme-color" content="#0b0b0f">
 <title>Quinielazo Mundialista</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Exo+2:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#0b0b0f; --panel:#15151c; --panel2:#1d1d27; --line:#2a2a36;
@@ -18,7 +21,7 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;color:var(--txt);
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;overscroll-behavior:none}
+  font-family:"Exo 2",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;overscroll-behavior:none}
 html{background:var(--bg)}
 body{padding-bottom:116px;max-width:760px;margin:0 auto;min-height:100vh;
   background:
@@ -34,7 +37,7 @@ header .sym{letter-spacing:10px;font-size:18px}
 header .sym span:nth-child(1){color:var(--pink2);text-shadow:0 0 12px rgba(255,46,142,.8)}
 header .sym span:nth-child(2){color:var(--teal2);text-shadow:0 0 12px rgba(21,214,168,.8)}
 header .sym span:nth-child(3){color:var(--blue2);text-shadow:0 0 12px rgba(91,124,255,.85)}
-header h1{margin:6px 0 2px;font-size:22px;font-weight:800;letter-spacing:1px;
+header h1{margin:6px 0 2px;font-family:"Audiowide",sans-serif;font-size:21px;font-weight:400;letter-spacing:1px;
   background:linear-gradient(180deg,#fff,#ffc8e1);-webkit-background-clip:text;background-clip:text;color:transparent;
   filter:drop-shadow(0 0 11px rgba(237,27,118,.5)) drop-shadow(0 0 20px rgba(91,124,255,.28))}
 header p{margin:0;color:var(--mut);font-size:12px}
@@ -94,7 +97,11 @@ select:focus,input:focus{outline:none;border-color:var(--pink)}
 .pod.p1{order:2;border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset;padding-bottom:26px}
 .pod.p2{order:1;padding-bottom:14px}
 .pod.p3{order:3}
-.pod .medal{font-size:24px}
+.pod .medal{font-family:"Audiowide",sans-serif;font-size:22px;color:var(--gold);text-shadow:0 0 14px rgba(244,194,13,.75);line-height:1}
+.st{display:inline-block;font-family:"Exo 2",sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;padding:2px 6px;border-radius:6px;vertical-align:middle}
+.st-lock{color:#9fb0ff;background:rgba(58,91,217,.16);border:1px solid rgba(91,124,255,.4);text-shadow:0 0 8px rgba(91,124,255,.5)}
+.st-edit{color:#7ff0d4;background:rgba(31,184,155,.16);border:1px solid rgba(21,214,168,.4);text-shadow:0 0 8px rgba(21,214,168,.5)}
+.esp{display:inline-block;font-size:10px;font-weight:800;letter-spacing:1px;color:var(--gold);border:1px solid rgba(244,194,13,.5);border-radius:5px;padding:0 5px;margin-left:4px;text-shadow:0 0 8px rgba(244,194,13,.5)}
 .rkrow{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line)}
 .rkrow:last-child{border:0}
 .rkpos{width:24px;text-align:center;font-weight:800;color:var(--mut)}
@@ -491,7 +498,7 @@ function fmt(iso){try{return new Date(iso).toLocaleString("es-ES",{day:"2-digit"
 function renderRank(){
   const r=ranking();const top=r.slice(0,3);
   let h='<div class="card"><h2 class="sec">○ Ranking en vivo</h2><div class="podium">';
-  [["p2",top[1],"🥈"],["p1",top[0],"👑"],["p3",top[2],"🥉"]].forEach(([cls,p,med])=>{
+  [["p2",top[1],"2"],["p1",top[0],"1"],["p3",top[2],"3"]].forEach(([cls,p,med])=>{
     if(!p)return;h+=`<div class="pod ${cls}"><div class="medal">${med}</div>${dch(p)}<div class="nm">${esc(p.name)}</div><div class="pt">${p.pts} pts</div></div>`;});
   h+='</div>';
   r.forEach((p,i)=>{h+=`<div class="rkrow"><div class="rkpos">${i+1}</div>${dch(p)}<div class="rknm">${esc(p.name)}</div><div class="rkpt">${p.pts}</div></div>`;});
@@ -517,7 +524,7 @@ function renderProns(){
     const closed=j.closeTime&&new Date(j.closeTime)<new Date();
     const s=jornadaScore(ME,j);
     const o=openAcc["pr"+j.clave]!==undefined?openAcc["pr"+j.clave]:(ri===0&&!closed);
-    const meta=closed?`🔒 ${s.pts} pts`:(j.closeTime?("✏️ abierta · cierra "+fmt(j.closeTime)):"✏️ abierta");
+    const meta=closed?`<span class="st st-lock">CERRADA</span> ${s.pts} pts`:(j.closeTime?(`<span class="st st-edit">ABIERTA</span> cierra ${fmt(j.closeTime)}`):'<span class="st st-edit">ABIERTA</span>');
     h+=`<div class="acc ${o?"open":""}"><div class="h" onclick="tacc('pr${j.clave}')"><div><span class="t">${esc(j.name)}</span> <span class="meta">${meta}</span></div><span class="chev">▾</span></div><div class="b">`;
     if(closed){
       j.matches.forEach((m,idx)=>{
@@ -553,7 +560,7 @@ function renderProns(){
     h+='<div class="subhead">◇ Fase eliminatoria</div>';
     act.forEach((rd,li)=>{const r=st+li;
       const o=openAcc["br"+r]!==undefined?openAcc["br"+r]:false;
-      h+=`<div class="acc ${o?"open":""}"><div class="h" onclick="tacc('br${r}')"><div><span class="t">${esc(rd.name)}</span> <span class="meta">${rd.pts} pts${brClosed?" · 🔒":" · ✏️"}</span></div><span class="chev">▾</span></div><div class="b">`;
+      h+=`<div class="acc ${o?"open":""}"><div class="h" onclick="tacc('br${r}')"><div><span class="t">${esc(rd.name)}</span> <span class="meta">${rd.pts} pts ${brClosed?'<span class="st st-lock">CERRADA</span>':'<span class="st st-edit">ABIERTA</span>'}</span></div><span class="chev">▾</span></div><div class="b">`;
       rounds[li].forEach((cr,i)=>{const sel=(pk[r]||{})[i];h+='<div style="margin-bottom:6px">';
         [0,1].forEach(side=>{const tm=cr[side];if(tm==null){h+='<div class="bx"><div class="tm muted">—</div></div>';return;}
           const isSel=sel===tm;
@@ -564,8 +571,8 @@ function renderProns(){
     });
     const bs=parseScore(pd.bracket.bonus);
     h+=`<div class="rndlbl">Bonus final · marcador exacto (10/5/2)</div><div class="exact" style="justify-content:flex-start"><input id="bonh" type="number" min="0" ${brClosed?"disabled":""} value="${bs?bs[0]:""}" style="width:54px"><span>-</span><input id="bona" type="number" min="0" ${brClosed?"disabled":""} value="${bs?bs[1]:""}" style="width:54px"></div>`;
-    if(brClosed)h+='<p class="muted" style="margin-top:8px">🔒 Cuadro cerrado: solo lectura.</p>';
-    else h+=`<button class="btn alt" style="margin-top:12px" onclick="saveBracket()">Guardar mi cuadro</button><p class="muted" style="margin-top:8px">⚠ Si cambias un cruce anterior, los siguientes que dependían se reinician.</p>`;
+    if(brClosed)h+='<p class="muted" style="margin-top:8px"><span class="st st-lock">CERRADO</span> Cuadro en solo lectura.</p>';
+    else h+=`<button class="btn alt" style="margin-top:12px" onclick="saveBracket()">Guardar mi cuadro</button><p class="muted" style="margin-top:8px">▲ Si cambias un cruce anterior, los siguientes que dependían se reinician.</p>`;
   }
 
   /* --- Side bet: solo lectura (lo gestiona el organizador) --- */
@@ -587,7 +594,7 @@ function renderFill(){
   ST.jornadas.slice().reverse().forEach((j,ri)=>{
     const closed=j.closeTime&&new Date(j.closeTime)<new Date();
     const o=openAcc["fill"+j.clave]!==undefined?openAcc["fill"+j.clave]:(ri===0);
-    h+=`<div class="acc ${o?"open":""}"><div class="h" onclick="tacc('fill${j.clave}')"><div><span class="t">${esc(j.name)}</span> <span class="meta">${closed?"🔒 cerrada":(j.closeTime?"cierra "+fmt(j.closeTime):"sin hora de cierre")}</span></div><span class="chev">▾</span></div><div class="b">`;
+    h+=`<div class="acc ${o?"open":""}"><div class="h" onclick="tacc('fill${j.clave}')"><div><span class="t">${esc(j.name)}</span> <span class="meta">${closed?"cerrada":(j.closeTime?"cierra "+fmt(j.closeTime):"sin hora de cierre")}</span></div><span class="chev">▾</span></div><div class="b">`;
     j.matches.forEach((m,idx)=>{
       const pred=getPick(ME,j.clave,idx);
       h+=`<div class="match"><div class="mt"><span class="gr">${m.group}</span><span class="nm">${esc(m.home)} - ${esc(m.away)} ${m.exact?'<span class="star">★ exacto</span>':""}</span></div>`;
@@ -607,7 +614,7 @@ function renderFill(){
 function setPk(btn){btn.closest(".picks").querySelectorAll(".pk").forEach(b=>b.classList.remove("on"));btn.classList.add("on");}
 async function saveFill(clave,btn){
   const jx=ST.jornadas.find(x=>x.clave===clave);
-  if(jx&&jx.closeTime&&new Date(jx.closeTime)<new Date()){toast("🔒 Jornada cerrada: ya no se puede guardar");renderActive();return;}
+  if(jx&&jx.closeTime&&new Date(jx.closeTime)<new Date()){toast("Jornada cerrada: ya no se puede guardar");renderActive();return;}
   const body=btn.closest(".b");const pd=pdataOf(ME);pd.preds=pd.preds||{};const cur=pd.preds[clave]||{};
   body.querySelectorAll(".match").forEach((mt,i)=>{
     const picks=mt.querySelector(".picks");
@@ -615,11 +622,11 @@ async function saveFill(clave,btn){
     const exh=mt.querySelector('[data-s="h"]'),exa=mt.querySelector('[data-s="a"]');
     if(exh&&exa&&exh.value!==""&&exa.value!=="")cur[i]=exh.value+"-"+exa.value;
   });
-  pd.preds[clave]=cur;const ok=await savePlayer(ME);toast(ok?"✓ Quiniela guardada":"⚠ Publica la app para guardar");renderActive();
+  pd.preds[clave]=cur;const ok=await savePlayer(ME);toast(ok?"✓ Quiniela guardada":"▲ Publica la app para guardar");renderActive();
 }
 async function saveMySide(){const pd=pdataOf(ME);pd.sidebet=pd.sidebet||{};
   document.querySelectorAll("[data-sbp]").forEach(i=>pd.sidebet[i.dataset.sbp]=i.value.trim());
-  const ok=await savePlayer(ME);toast(ok?"✓ Side bet guardado":"⚠ Publica la app para guardar");}
+  const ok=await savePlayer(ME);toast(ok?"✓ Side bet guardado":"▲ Publica la app para guardar");}
 
 /* ============ ELIMINATORIA ============ */
 function renderElim(){
@@ -635,7 +642,7 @@ function renderElim(){
   for(let li=0;li<act.length-1;li++){const prev=rounds[li];const w=[];
     for(let i=0;i<prev.length;i++){let sel=(pk[s+li]||{})[i];if(sel&&prev[i].indexOf(sel)<0)sel=null;w.push(sel||null);}
     const nx=[];for(let i=0;i<w.length;i+=2)nx.push([w[i],w[i+1]]);rounds.push(nx);}
-  if(closed)h+='<div class="notice">🔒 El cuadro está cerrado. Solo lectura.</div>';
+  if(closed)h+='<div class="notice">El cuadro está cerrado. Solo lectura.</div>';
   act.forEach((rd,li)=>{const r=s+li;
     h+=`<div class="rndlbl">${rd.name} · ${rd.pts} pts</div>`;
     rounds[li].forEach((cr,i)=>{const sel=(pk[r]||{})[i];h+='<div style="margin-bottom:6px">';
@@ -646,14 +653,14 @@ function renderElim(){
   const bs=parseScore(pd.bracket.bonus);
   h+=`<div class="rndlbl">Bonus final · marcador exacto (10/5/2)</div><div class="exact" style="justify-content:flex-start"><input id="bonh" type="number" min="0" ${closed?"disabled":""} value="${bs?bs[0]:""}" style="width:54px"><span>-</span><input id="bona" type="number" min="0" ${closed?"disabled":""} value="${bs?bs[1]:""}" style="width:54px"></div>`;
   if(!closed)h+=`<button class="btn alt" style="margin-top:14px" onclick="saveBracket()">Guardar mi cuadro</button>`;
-  h+=`<p class="muted" style="margin-top:8px">⚠ Si cambias un cruce anterior, los siguientes que dependían se reinician.</p>`;
+  h+=`<p class="muted" style="margin-top:8px">▲ Si cambias un cruce anterior, los siguientes que dependían se reinician.</p>`;
   $("v-elim").innerHTML=h;
 }
 function pickBr(r,i,tm){const pd=pdataOf(ME);pd.bracket=pd.bracket||{picks:{},bonus:""};pd.bracket.picks[r]=pd.bracket.picks[r]||{};pd.bracket.picks[r][i]=tm;
   for(let rr=r+1;rr<ROUNDS.length;rr++)pd.bracket.picks[rr]={};renderActive();}
 async function saveBracket(){
-  if(ST.bracket.closeTime&&new Date(ST.bracket.closeTime)<new Date()){toast("🔒 Cuadro cerrado: ya no se puede guardar");renderActive();return;}
-  const pd=pdataOf(ME);const h=$("bonh").value,a=$("bona").value;if(h!==""&&a!=="")pd.bracket.bonus=h+"-"+a;const ok=await savePlayer(ME);toast(ok?"✓ Cuadro guardado":"⚠ Publica la app para guardar");}
+  if(ST.bracket.closeTime&&new Date(ST.bracket.closeTime)<new Date()){toast("Cuadro cerrado: ya no se puede guardar");renderActive();return;}
+  const pd=pdataOf(ME);const h=$("bonh").value,a=$("bona").value;if(h!==""&&a!=="")pd.bracket.bonus=h+"-"+a;const ok=await savePlayer(ME);toast(ok?"✓ Cuadro guardado":"▲ Publica la app para guardar");}
 
 /* ============ REGLAS ============ */
 function renderRules(){
@@ -699,7 +706,7 @@ function renderOrg(){
   });
   h+='</div>';
   h+=`<div class="card"><div class="subhead" style="margin-top:0">Crear o editar jornada</div>
-    <select id="jedit" onchange="loadJEdit()"><option value="__new">➕ Crear jornada nueva</option>${ST.jornadas.map(j=>`<option value="${j.clave}">✎ ${esc(j.name)}</option>`).join("")}</select>
+    <select id="jedit" onchange="loadJEdit()"><option value="__new">+ Crear jornada nueva</option>${ST.jornadas.map(j=>`<option value="${j.clave}">✎ ${esc(j.name)}</option>`).join("")}</select>
     <label class="fld">Nombre visible</label><input id="jname" placeholder="Jornada 3">
     <label class="fld">Clave única (ej. J3, OCT)</label><input id="jclave" placeholder="J3">
     <label class="fld">Partidos (uno por línea: <b>Grupo Local-Visitante</b>)</label>
@@ -708,7 +715,7 @@ function renderOrg(){
     <div id="exactbox"></div>
     <label class="fld">Hora de cierre (antes del primer partido)</label><input id="jclose" type="datetime-local">
     <button class="btn" style="margin-top:12px" onclick="saveJornada()" id="jsavebtn">Crear jornada</button>
-    <button class="btn danger" style="margin-top:8px;display:none" id="jdelbtn" onclick="delJornada()">🗑 Borrar jornada</button></div>`;
+    <button class="btn danger" style="margin-top:8px;display:none" id="jdelbtn" onclick="delJornada()">✕ Borrar jornada</button></div>`;
   const b=ST.bracket;
   h+=`<div class="card"><div class="subhead" style="margin-top:0">Fase eliminatoria · cuadro</div>
     <label class="fld">Cierre para rellenar el cuadro</label><input id="brclose" type="datetime-local" value="${b.closeTime?b.closeTime.slice(0,16):""}">
@@ -729,7 +736,7 @@ function renderOrg(){
     const fs=parseScore(b.real.finalScore);
     h+=`<div class="rndlbl">Marcador real de la final</div><div class="exact" style="justify-content:flex-start"><input id="rfh" type="number" min="0" value="${fs?fs[0]:""}" style="width:54px"><span>-</span><input id="rfa" type="number" min="0" value="${fs?fs[1]:""}" style="width:54px"></div>
       <button class="btn" style="margin-top:12px" onclick="saveRealFinal()">Guardar resultados reales</button>
-      <button class="btn danger" style="margin-top:8px" onclick="resetBracket()">🗑 Borrar / reiniciar cuadro</button>`;
+      <button class="btn danger" style="margin-top:8px" onclick="resetBracket()">✕ Borrar / reiniciar cuadro</button>`;
   }
   h+='</div>';
   const sr=ST.sidebet.results||{};
@@ -758,9 +765,9 @@ function loadJEdit(){const v=$("jedit").value,del=$("jdelbtn"),btn=$("jsavebtn")
 function onJmatches(){buildExactBox(parseMatchLines($("jmatches").value));}
 function isSpain(m){return /españa/i.test(m.home)||/españa/i.test(m.away);}
 function buildExactBox(matches){const box=$("exactbox");if(!matches.length){box.innerHTML="";return;}
-  let h='<label class="fld">⭐ Toca para marcar los partidos a <b>resultado exacto</b> (5/3/1): el de <b>España</b> (se marca solo) y el <b>partido de la jornada</b> que elijáis.</label>';
+  let h='<label class="fld">★ Toca para marcar los partidos a <b>resultado exacto</b> (5/3/1): el de <b>España</b> (se marca solo) y el <b>partido de la jornada</b> que elijáis.</label>';
   matches.forEach((m,i)=>{const on=m.exact||isSpain(m);
-    h+=`<div class="bx"><div class="tm">${esc(m.group)} ${esc(m.home)} - ${esc(m.away)}${isSpain(m)?' 🇪🇸':''}</div><button class="${on?"sel":""}" data-ex="${i}" onclick="this.classList.toggle('sel')">★ exacto</button></div>`;});
+    h+=`<div class="bx"><div class="tm">${esc(m.group)} ${esc(m.home)} - ${esc(m.away)}${isSpain(m)?' <span class="esp">ESP</span>':''}</div><button class="${on?"sel":""}" data-ex="${i}" onclick="this.classList.toggle('sel')">★ exacto</button></div>`;});
   box.innerHTML=h;}
 function parseMatchLines(txt){const out=[];txt.split("\n").forEach(line=>{line=line.trim();if(!line)return;
   const sp=line.indexOf(" ");if(sp<0)return;const group=line.slice(0,sp).trim(),rest=line.slice(sp+1).trim();
@@ -777,7 +784,7 @@ async function saveJornada(){
     existing.name=name;existing.matches=ms;existing.closeTime=close;
   }else{if($("jedit").value==="__new"&&ST.jornadas.some(j=>j.clave===clave)){toast("Esa clave ya existe");return;}
     ST.jornadas.push({clave,name,factory:false,closeTime:close,matches:ms});}
-  const ok=await sset("jornadas",ST.jornadas);toast(ok?"✓ Jornada guardada":"⚠ Publica la app para guardar");ORG=true;renderActive();
+  const ok=await sset("jornadas",ST.jornadas);toast(ok?"✓ Jornada guardada":"▲ Publica la app para guardar");ORG=true;renderActive();
 }
 async function delJornada(){const clave=$("jclave").value.trim().toUpperCase();const j=ST.jornadas.find(x=>x.clave===clave);
   if(!j||j.factory){toast("No se puede borrar");return;}
@@ -787,7 +794,7 @@ async function delJornada(){const clave=$("jclave").value.trim().toUpperCase();c
   toast("Jornada borrada");renderActive();}
 async function saveResults(clave,btn){const j=ST.jornadas.find(x=>x.clave===clave),body=btn.closest(".b");
   body.querySelectorAll("[data-ri]").forEach(inp=>{j.matches[+inp.dataset.ri].result=inp.value.trim();});
-  const ok=await sset("jornadas",ST.jornadas);toast(ok?"✓ Resultados guardados":"⚠ Publica la app para guardar");renderActive();}
+  const ok=await sset("jornadas",ST.jornadas);toast(ok?"✓ Resultados guardados":"▲ Publica la app para guardar");renderActive();}
 function brHint(){const el=$("brhint");if(!el)return;const n=$("br16").value.split("\n").map(l=>l.trim()).filter(l=>l.includes("-")).length;
   if(!n){el.textContent="";return;}const s=ROUNDS.findIndex(r=>r.size<=n);el.textContent=`Detectado: ${s<0?"—":ROUNDS[s].name} (${n} cruces)`;}
 async function saveBracketCfg(){const lines=$("br16").value.split("\n").map(l=>l.trim()).filter(Boolean);
@@ -795,21 +802,21 @@ async function saveBracketCfg(){const lines=$("br16").value.split("\n").map(l=>l
   if(r16.length<2){toast("Mete los cruces");return;}
   ST.bracket.r16=r16;ST.bracket.closeTime=$("brclose").value?new Date($("brclose").value).toISOString():"";
   ST.bracket.real=ST.bracket.real||{w:{},finalScore:""};
-  const ok=await sset("bracket",ST.bracket);toast(ok?"✓ Cuadro guardado":"⚠ Publica la app para guardar");renderActive();}
+  const ok=await sset("bracket",ST.bracket);toast(ok?"✓ Cuadro guardado":"▲ Publica la app para guardar");renderActive();}
 function realBr(r,i,tm){ST.bracket.real.w[r]=ST.bracket.real.w[r]||{};ST.bracket.real.w[r][i]=tm;
   for(let rr=r+1;rr<ROUNDS.length;rr++)ST.bracket.real.w[rr]={};sset("bracket",ST.bracket);renderActive();}
-async function saveRealFinal(){const h=$("rfh").value,a=$("rfa").value;if(h!==""&&a!=="")ST.bracket.real.finalScore=h+"-"+a;const ok=await sset("bracket",ST.bracket);toast(ok?"✓ Guardado":"⚠ Publica la app");renderActive();}
+async function saveRealFinal(){const h=$("rfh").value,a=$("rfa").value;if(h!==""&&a!=="")ST.bracket.real.finalScore=h+"-"+a;const ok=await sset("bracket",ST.bracket);toast(ok?"✓ Guardado":"▲ Publica la app");renderActive();}
 async function resetBracket(){if(!confirm("¿Borrar todo el cuadro y los pronósticos de todos?"))return;
   ST.bracket={closeTime:"",r16:[],real:{w:{},finalScore:""}};await sset("bracket",ST.bracket);
   for(const id in ST.pdata){if(ST.pdata[id].bracket){ST.pdata[id].bracket={picks:{},bonus:""};await savePlayer(id);}}
   toast("Cuadro reiniciado");renderActive();}
 async function saveSide(){const r={};document.querySelectorAll("[data-sb]").forEach(i=>r[i.dataset.sb]=i.value.trim());
-  ST.sidebet.results=r;const ok=await sset("sidebet",ST.sidebet);toast(ok?"✓ Premios guardados":"⚠ Publica la app para guardar");renderActive();}
+  ST.sidebet.results=r;const ok=await sset("sidebet",ST.sidebet);toast(ok?"✓ Premios guardados":"▲ Publica la app para guardar");renderActive();}
 function loadOrgSide(){const id=+$("sbpsel").value;document.querySelectorAll("[data-osb]").forEach(i=>{i.value=id?sidePick(id,i.dataset.osb):"";});}
 async function saveOrgSide(){const id=+$("sbpsel").value;if(!id){toast("Elige un jugador");return;}
   const pd=pdataOf(id);pd.sidebet=pd.sidebet||{};
   document.querySelectorAll("[data-osb]").forEach(i=>pd.sidebet[i.dataset.osb]=i.value.trim());
-  const ok=await savePlayer(id);toast(ok?"✓ Premios del jugador guardados":"⚠ Error al guardar");}
+  const ok=await savePlayer(id);toast(ok?"✓ Premios del jugador guardados":"▲ Error al guardar");}
 
 /* ============ INIT ============ */
 async function init(){
