@@ -59,6 +59,9 @@ header p{margin:0;color:var(--mut);font-size:12px}
 .gearmenu button .gi{font-size:19px;color:var(--pink2);width:22px;text-align:center}
 .cog{width:1em;height:1em;vertical-align:-.15em;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .gearmenu button .gi .cog{width:20px;height:20px}
+.tri{width:1em;height:1em;vertical-align:-.12em;fill:none;stroke:var(--teal2);stroke-width:1.9;stroke-linejoin:round;filter:drop-shadow(0 0 4px rgba(21,214,168,.6))}
+.sec .tri{width:1.1em;height:1.1em}
+.gearmenu button .gi .tri{width:20px;height:20px}
 /* Barra transparente: las píldoras flotan sobre el contenido (sin fondo) */
 .tabbar{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;gap:22px;z-index:30;max-width:760px;margin:0 auto;
   padding:10px 18px calc(16px + env(safe-area-inset-bottom));
@@ -94,6 +97,7 @@ header p{margin:0;color:var(--mut);font-size:12px}
 .card{background:linear-gradient(180deg,#16161f,#101019);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 2px 16px rgba(0,0,0,.3),0 0 0 1px rgba(91,124,255,.05),0 0 22px rgba(58,91,217,.04)}
 h2.sec{font-family:"Audiowide",sans-serif;font-size:12px;font-weight:400;letter-spacing:1.5px;text-transform:uppercase;color:var(--pink2);margin:2px 0 12px;display:flex;align-items:center;gap:8px;text-shadow:0 0 14px rgba(255,46,142,.55)}
 .dorsal{display:inline-flex;align-items:center;justify-content:center;min-width:42px;height:26px;border-radius:14px;background:rgba(31,184,155,.16);color:#bdffe9;border:1px solid #1fb89b66;font-weight:800;font-size:12px;padding:0 8px;font-variant-numeric:tabular-nums;box-shadow:0 0 10px rgba(31,184,155,.2),0 1px 0 rgba(255,255,255,.08) inset;text-shadow:0 0 8px rgba(21,214,168,.45)}
+.dorsal .dot{margin-right:5px;font-size:10px;line-height:1;color:var(--pink2);text-shadow:0 0 7px rgba(255,46,142,.7)}
 select,input{background:rgba(29,29,39,.6);border:1px solid var(--line);color:var(--txt);border-radius:11px;padding:10px;font-size:15px;width:100%;font-family:inherit}
 select:focus,input:focus,textarea:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 1px rgba(255,46,142,.35),0 0 14px rgba(237,27,118,.22)}
 .row{display:flex;gap:8px;align-items:center}
@@ -193,7 +197,7 @@ label.fld{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
   <div class="gearmenu">
     <button onclick="goExtra('manual')"><span class="gi">≡</span> Manual de uso</button>
     <button onclick="goExtra('rules')"><span class="gi">⚑</span> Reglas y premios</button>
-    <button onclick="goExtra('org')"><span class="gi"><svg class="cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 13.5a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.46V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-1.05-1.46 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.6 1.6 0 0 0 .32-1.77 1.6 1.6 0 0 0-1.46-.97H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.46-1.05 1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.6 1.6 0 0 0 1.77.32H9a1.6 1.6 0 0 0 .97-1.46V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 .97 1.46 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.6 1.6 0 0 0-.32 1.77V9a1.6 1.6 0 0 0 1.46.97H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.46.97z"/></svg></span> Organizador</button>
+    <button onclick="goExtra('org')"><span class="gi"><svg class="tri" viewBox="0 0 24 24"><path d="M12 4 L20.7 19 L3.3 19 Z"/></svg></span> Organizador</button>
   </div>
 </div>
 <div class="tabbar">
@@ -497,7 +501,7 @@ function bestOfJornada(j){
 const $=id=>document.getElementById(id);
 const esc=s=>(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const pad=n=>String(n).padStart(3,"0");
-const dch=p=>`<span class="dorsal">○${pad(p.dorsal)}</span>`;
+const dch=p=>`<span class="dorsal"><i class="dot">○</i>${pad(p.dorsal)}</span>`;
 function toast(t){const e=$("toast");e.textContent=t;e.classList.add("show");clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove("show"),1900);}
 function playerOptions(sel){return '<option value="">— elige tu nombre —</option>'+sortedPlayers().map(p=>`<option value="${p.id}" ${p.id==sel?"selected":""}>#${pad(p.dorsal)} · ${esc(p.name)}</option>`).join("");}
 function go(t){CURTAB=t;
@@ -709,7 +713,7 @@ function renderManual(){
   <div class="card"><div class="subhead" style="margin-top:0">5 · Ranking</div>
     <p class="muted">La pestaña <b>Ranking</b> muestra la clasificación en vivo, el podio y el mejor de cada jornada (premio de 10€). Se actualiza solo en cuanto entran resultados.</p></div>
 
-  <div class="card"><div class="subhead" style="margin-top:0">6 · Organizador (<svg class="cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 13.5a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.46V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-1.05-1.46 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.6 1.6 0 0 0 .32-1.77 1.6 1.6 0 0 0-1.46-.97H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.46-1.05 1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.6 1.6 0 0 0 1.77.32H9a1.6 1.6 0 0 0 .97-1.46V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 .97 1.46 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.6 1.6 0 0 0-.32 1.77V9a1.6 1.6 0 0 0 1.46.97H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.46.97z"/></svg>)</div>
+  <div class="card"><div class="subhead" style="margin-top:0">6 · Organizador (<svg class="tri" viewBox="0 0 24 24"><path d="M12 4 L20.7 19 L3.3 19 Z"/></svg>)</div>
     <p class="muted">Protegido por PIN. Desde ahí se gestiona todo:</p>
     <div class="kvr"><span><b>Resultados</b> de cada jornada</span><b>1/x/2 o marcador</b></div>
     <div class="kvr"><span><b>Crear o editar jornada</b> (partidos, ★ exacto, hora de cierre)</span><b></b></div>
@@ -747,13 +751,13 @@ function renderRules(){
 }
 
 /* ============ ORGANIZADOR ============ */
-const COG='<svg class="cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 13.5a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.46V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-1.05-1.46 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.6 1.6 0 0 0 .32-1.77 1.6 1.6 0 0 0-1.46-.97H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.46-1.05 1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.6 1.6 0 0 0 1.77.32H9a1.6 1.6 0 0 0 .97-1.46V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 .97 1.46 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.6 1.6 0 0 0-.32 1.77V9a1.6 1.6 0 0 0 1.46.97H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.46.97z"/></svg>';
+const TRI='<svg class="tri" viewBox="0 0 24 24"><path d="M12 4 L20.7 19 L3.3 19 Z"/></svg>';
 function renderOrg(){
-  if(!ORG){$("v-org").innerHTML=`<div class="card"><h2 class="sec">${COG} Organizador</h2>
+  if(!ORG){$("v-org").innerHTML=`<div class="card"><h2 class="sec">${TRI} Organizador</h2>
     <label class="fld">PIN</label><input id="pin" type="password" inputmode="numeric" placeholder="••••">
     <button class="btn" style="margin-top:10px" onclick="checkPin()">Entrar</button>
     <p class="muted">Solo para organizadores.</p></div>`;return;}
-  let h='<div class="card"><h2 class="sec">'+COG+' Organizador</h2><p class="muted">Mete resultados, gestiona jornadas, el cuadro y los premios individuales. El ranking se actualiza solo.</p></div>';
+  let h='<div class="card"><h2 class="sec">'+TRI+' Organizador</h2><p class="muted">Mete resultados, gestiona jornadas, el cuadro y los premios individuales. El ranking se actualiza solo.</p></div>';
   h+='<div class="card"><div class="subhead" style="margin-top:0">Resultados</div>';
   ST.jornadas.slice().reverse().forEach((j,ri)=>{
     const done=j.matches.filter(m=>m.result).length;
