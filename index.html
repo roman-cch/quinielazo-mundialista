@@ -18,6 +18,7 @@
   --pink:#ed1b76; --pink2:#ff2e8e; --teal:#1fb89b; --teal2:#15d6a8;
   --navy:#0e1a3f; --blue:#3a5bd9; --blue2:#5b7cff;
   --gold:#f4c20d; --txt:#f3f0ee; --mut:#9a96a6; --ok:#27c08a; --bad:#ff5577;
+  --safetop: max(env(safe-area-inset-top), 34px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;color:var(--txt);
@@ -32,7 +33,7 @@ body{padding-bottom:116px;max-width:760px;margin:0 auto;min-height:100vh;
 .shapes{position:fixed;inset:0;pointer-events:none;opacity:.05;z-index:0;overflow:hidden}
 .shapes span{position:absolute;color:var(--pink);font-size:120px;line-height:1}
 .wrap{position:relative;z-index:1}
-header{padding:18px 16px 12px;text-align:center;background:radial-gradient(120% 120% at 50% -20%, rgba(237,27,118,.22), transparent 60%)}
+header{padding:calc(var(--safetop) + 18px) 16px 12px;text-align:center;background:radial-gradient(120% 120% at 50% -20%, rgba(237,27,118,.22), transparent 60%)}
 header .sym{letter-spacing:10px;font-size:18px}
 header .sym span:nth-child(1){color:var(--pink2);text-shadow:0 0 12px rgba(255,46,142,.8)}
 header .sym span:nth-child(2){color:var(--teal2);text-shadow:0 0 12px rgba(21,214,168,.8)}
@@ -41,17 +42,23 @@ header h1{margin:6px 0 2px;font-family:"Audiowide",sans-serif;font-size:21px;fon
   background:linear-gradient(180deg,#fff,#ffc8e1);-webkit-background-clip:text;background-clip:text;color:transparent;
   filter:drop-shadow(0 0 11px rgba(237,27,118,.5)) drop-shadow(0 0 20px rgba(91,124,255,.28))}
 header p{margin:0;color:var(--mut);font-size:12px}
-.btnfs,.btngear{position:absolute;top:14px;background:rgba(255,255,255,.06);border:1px solid rgba(91,124,255,.3);color:var(--txt);border-radius:11px;padding:6px 9px;font-size:15px;z-index:2;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.btnfs,.btngear{position:absolute;top:calc(var(--safetop) + 14px);display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.06);border:1px solid rgba(91,124,255,.3);color:var(--txt);border-radius:11px;padding:7px 9px;font-size:15px;line-height:1;z-index:2;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.btnfs,.btngear{color:#eaf0ff}
+.btngear svg{display:block;filter:drop-shadow(0 0 5px rgba(91,124,255,.55)) drop-shadow(0 0 9px rgba(255,46,142,.25))}
 .btnfs{left:14px}
-.btngear{right:14px}
-.btngear.on{background:linear-gradient(180deg,var(--pink2),var(--pink));border-color:#ff2e8e88;color:#fff;box-shadow:0 4px 12px rgba(237,27,118,.4)}
+.btngear{right:11px;background:none;border:0;border-radius:0;padding:5px;backdrop-filter:none;-webkit-backdrop-filter:none}
+.btngear svg{width:23px;height:23px}
+.btngear.on{color:#fff}
+.btngear.on svg{filter:drop-shadow(0 0 6px rgba(255,46,142,.85)) drop-shadow(0 0 12px rgba(255,46,142,.45))}
 .gearwrap{position:fixed;inset:0;z-index:40}
 .gearwrap[hidden]{display:none}
 .gearback{position:absolute;inset:0;background:rgba(0,0,0,.45)}
-.gearmenu{position:absolute;top:52px;right:12px;min-width:215px;background:linear-gradient(180deg,var(--panel2),#14141c);border:1px solid var(--line);border-radius:14px;padding:6px;box-shadow:0 16px 44px rgba(0,0,0,.6),0 0 0 1px rgba(255,46,142,.15) inset;animation:fade .15s}
+.gearmenu{position:absolute;top:calc(var(--safetop) + 52px);right:12px;min-width:215px;background:linear-gradient(180deg,var(--panel2),#14141c);border:1px solid var(--line);border-radius:14px;padding:6px;box-shadow:0 16px 44px rgba(0,0,0,.6),0 0 0 1px rgba(255,46,142,.15) inset;animation:fade .15s}
 .gearmenu button{display:flex;align-items:center;gap:11px;width:100%;background:none;border:0;color:var(--txt);padding:13px 12px;font-size:15px;font-weight:600;border-radius:10px;text-align:left}
 .gearmenu button:active{background:var(--panel)}
 .gearmenu button .gi{font-size:19px;color:var(--pink2);width:22px;text-align:center}
+.cog{width:1em;height:1em;vertical-align:-.15em;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.gearmenu button .gi .cog{width:20px;height:20px}
 /* Barra transparente: las píldoras flotan sobre el contenido (sin fondo) */
 .tabbar{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;gap:22px;z-index:30;max-width:760px;margin:0 auto;
   padding:10px 18px calc(16px + env(safe-area-inset-bottom));
@@ -170,7 +177,7 @@ label.fld{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 <div class="wrap">
 <header>
   <button class="btnfs" id="fsbtn" onclick="toggleFs()">⛶</button>
-  <button class="btngear" id="gearbtn" onclick="toggleGear()">⚙</button>
+  <button class="btngear" id="gearbtn" onclick="toggleGear()" aria-label="Ajustes"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 13.5a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.46V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-1.05-1.46 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.6 1.6 0 0 0 .32-1.77 1.6 1.6 0 0 0-1.46-.97H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.46-1.05 1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.6 1.6 0 0 0 1.77.32H9a1.6 1.6 0 0 0 .97-1.46V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 .97 1.46 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.6 1.6 0 0 0-.32 1.77V9a1.6 1.6 0 0 0 1.46.97H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.46.97z"/></svg></button>
   <div class="sym"><span>○</span> <span>△</span> <span>□</span></div>
   <h1>QUINIELAZO MUNDIALISTA</h1>
   <p>Solo puede quedar uno</p>
@@ -186,7 +193,7 @@ label.fld{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
   <div class="gearmenu">
     <button onclick="goExtra('manual')"><span class="gi">≡</span> Manual de uso</button>
     <button onclick="goExtra('rules')"><span class="gi">⚑</span> Reglas y premios</button>
-    <button onclick="goExtra('org')"><span class="gi">⚙</span> Organizador</button>
+    <button onclick="goExtra('org')"><span class="gi"><svg class="cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 13.5a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.46V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-1.05-1.46 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.6 1.6 0 0 0 .32-1.77 1.6 1.6 0 0 0-1.46-.97H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.46-1.05 1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.6 1.6 0 0 0 1.77.32H9a1.6 1.6 0 0 0 .97-1.46V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 .97 1.46 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.6 1.6 0 0 0-.32 1.77V9a1.6 1.6 0 0 0 1.46.97H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.46.97z"/></svg></span> Organizador</button>
   </div>
 </div>
 <div class="tabbar">
@@ -678,7 +685,7 @@ async function saveBracket(){
 /* ============ MANUAL DE USO ============ */
 function renderManual(){
   $("v-manual").innerHTML=`<div class="card"><h2 class="sec">≡ Manual de uso</h2>
-    <p class="muted">Cómo funciona la plataforma, paso a paso. Para las reglas y la puntuación al detalle, mira <b>Reglas y premios</b> en este mismo menú (⚙).</p></div>
+    <p class="muted">Cómo funciona la plataforma, paso a paso. Para las reglas y la puntuación al detalle, mira <b>Reglas y premios</b> en este mismo menú (<svg class="cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 13.5a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.46V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-1.05-1.46 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.6 1.6 0 0 0 .32-1.77 1.6 1.6 0 0 0-1.46-.97H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.46-1.05 1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.6 1.6 0 0 0 1.77.32H9a1.6 1.6 0 0 0 .97-1.46V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 .97 1.46 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.6 1.6 0 0 0-.32 1.77V9a1.6 1.6 0 0 0 1.46.97H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.46.97z"/></svg>).</p></div>
 
   <div class="card"><div class="subhead" style="margin-top:0">1 · Empezar a jugar</div>
     <div class="kvr"><span>Entra en <b>Pronósticos</b> (abajo)</span><b>△</b></div>
@@ -702,7 +709,7 @@ function renderManual(){
   <div class="card"><div class="subhead" style="margin-top:0">5 · Ranking</div>
     <p class="muted">La pestaña <b>Ranking</b> muestra la clasificación en vivo, el podio y el mejor de cada jornada (premio de 10€). Se actualiza solo en cuanto entran resultados.</p></div>
 
-  <div class="card"><div class="subhead" style="margin-top:0">6 · Organizador (⚙)</div>
+  <div class="card"><div class="subhead" style="margin-top:0">6 · Organizador (<svg class="cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 13.5a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.46V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-1.05-1.46 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.6 1.6 0 0 0 .32-1.77 1.6 1.6 0 0 0-1.46-.97H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.46-1.05 1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.6 1.6 0 0 0 1.77.32H9a1.6 1.6 0 0 0 .97-1.46V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 .97 1.46 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.6 1.6 0 0 0-.32 1.77V9a1.6 1.6 0 0 0 1.46.97H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.46.97z"/></svg>)</div>
     <p class="muted">Protegido por PIN. Desde ahí se gestiona todo:</p>
     <div class="kvr"><span><b>Resultados</b> de cada jornada</span><b>1/x/2 o marcador</b></div>
     <div class="kvr"><span><b>Crear o editar jornada</b> (partidos, ★ exacto, hora de cierre)</span><b></b></div>
@@ -740,12 +747,13 @@ function renderRules(){
 }
 
 /* ============ ORGANIZADOR ============ */
+const COG='<svg class="cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 13.5a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.46V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-1.05-1.46 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.6 1.6 0 0 0 .32-1.77 1.6 1.6 0 0 0-1.46-.97H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.46-1.05 1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.6 1.6 0 0 0 1.77.32H9a1.6 1.6 0 0 0 .97-1.46V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 .97 1.46 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.6 1.6 0 0 0-.32 1.77V9a1.6 1.6 0 0 0 1.46.97H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.46.97z"/></svg>';
 function renderOrg(){
-  if(!ORG){$("v-org").innerHTML=`<div class="card"><h2 class="sec">⚙ Organizador</h2>
+  if(!ORG){$("v-org").innerHTML=`<div class="card"><h2 class="sec">${COG} Organizador</h2>
     <label class="fld">PIN</label><input id="pin" type="password" inputmode="numeric" placeholder="••••">
     <button class="btn" style="margin-top:10px" onclick="checkPin()">Entrar</button>
     <p class="muted">Solo para organizadores.</p></div>`;return;}
-  let h='<div class="card"><h2 class="sec">⚙ Organizador</h2><p class="muted">Mete resultados, gestiona jornadas, el cuadro y los premios individuales. El ranking se actualiza solo.</p></div>';
+  let h='<div class="card"><h2 class="sec">'+COG+' Organizador</h2><p class="muted">Mete resultados, gestiona jornadas, el cuadro y los premios individuales. El ranking se actualiza solo.</p></div>';
   h+='<div class="card"><div class="subhead" style="margin-top:0">Resultados</div>';
   ST.jornadas.slice().reverse().forEach((j,ri)=>{
     const done=j.matches.filter(m=>m.result).length;
