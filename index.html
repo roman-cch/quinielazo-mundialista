@@ -562,10 +562,12 @@ function rankSegments(){
 }
 function setRankView(v){RANKVIEW=v;renderRank();}
 function bestOfJornada(j){
-  if(!j.matches.length||!j.matches.every(m=>m.result))return null;
+  const total=j.matches.length;if(!total)return null;
+  const done=j.matches.filter(m=>m.result).length;if(!done)return null;
   let best=-1,winners=[];
   PLAYERS.forEach(p=>{const s=jornadaScore(p.id,j).pts;if(s>best){best=s;winners=[p];}else if(s===best)winners.push(p);});
-  return best>0?{best,winners}:null;
+  if(best<=0)return null;
+  return {best,winners,done,total,complete:done===total};
 }
 
 /* ============ HELPERS UI ============ */
@@ -605,7 +607,11 @@ function renderRank(){
   let h='<div class="card"><h2 class="sec">○ Ranking en vivo</h2>';
   // Selector de vista (Total / jornadas / rondas). Mismos datos, distinta vista.
   h+='<div class="segbar">'+segs.map(s=>`<button class="seg ${s.v===RANKVIEW?"on":""}" onclick="setRankView('${s.v}')">${esc(s.l)}</button>`).join("")+'</div>';
-  if(!total)h+=`<p class="muted" style="margin:-2px 0 10px">Clasificación de <b>${esc(segLabel)}</b>.</p>`;
+  if(!total){
+    let extra="";
+    if(RANKVIEW.indexOf("j:")===0){const jj=ST.jornadas.find(x=>x.clave===RANKVIEW.slice(2));if(jj){const dn=jj.matches.filter(m=>m.result).length;extra=` · ${dn}/${jj.matches.length} partidos jugados`;}}
+    h+=`<p class="muted" style="margin:-2px 0 10px">Clasificación de <b>${esc(segLabel)}</b>${extra}.</p>`;
+  }
   h+='<div class="podium">';
   [["p2",top[1],"2"],["p1",top[0],"1"],["p3",top[2],"3"]].forEach(([cls,p,med])=>{
     if(!p)return;h+=`<div class="pod ${cls}"><div class="medal">${med}</div>${dch(p)}<div class="nm">${esc(p.name)}</div><div class="pt">${p.pts} pts</div></div>`;});
@@ -617,7 +623,9 @@ function renderRank(){
   if(total){
     const wins=[];ST.jornadas.forEach(j=>{const b=bestOfJornada(j);if(b)wins.push([j,b]);});
     if(wins.length){h+='<div class="card"><h2 class="sec">△ Mejor de la jornada · 10€</h2>';
-      wins.forEach(([j,b])=>{h+=`<div class="kvr"><span>${esc(j.name)} <span class="tag10">10€</span></span><b>${b.winners.map(w=>esc(w.name)).join(", ")} · ${b.best} pts</b></div>`;});
+      wins.forEach(([j,b])=>{
+        const tag=b.complete?'<span class="tag10">10€</span>':`<span class="st st-edit">provisional ${b.done}/${b.total}</span>`;
+        h+=`<div class="kvr"><span>${esc(j.name)} ${tag}</span><b>${b.winners.map(w=>esc(w.name)).join(", ")} · ${b.best} pts</b></div>`;});
       h+='</div>';}
   }
   h+='<p class="muted" style="text-align:center">Se actualiza solo en cuanto entran los resultados. ○ △ □</p>';
@@ -637,7 +645,8 @@ function renderProns(){
     const closed=j.closeTime&&new Date(j.closeTime)<new Date();
     const s=jornadaScore(ME,j);
     const o=openAcc["pr"+j.clave]!==undefined?openAcc["pr"+j.clave]:(ri===0&&!closed);
-    const meta=closed?`<span class="st st-lock">CERRADA</span> ${s.pts} pts`:(j.closeTime?(`<span class="st st-edit">ABIERTA</span> cierra ${fmt(j.closeTime)}`):'<span class="st st-edit">ABIERTA</span>');
+    const jDone=j.matches.filter(m=>m.result).length;
+    const meta=closed?`<span class="st st-lock">CERRADA</span> ${jDone}/${j.matches.length} jugados · ${s.pts} pts`:(j.closeTime?(`<span class="st st-edit">ABIERTA</span> cierra ${fmt(j.closeTime)}`):'<span class="st st-edit">ABIERTA</span>');
     h+=`<div class="acc ${o?"open":""}"><div class="h" onclick="tacc('pr${j.clave}')"><div><span class="t">${esc(j.name)}</span> <span class="meta">${meta}</span></div><span class="chev">▾</span></div><div class="b">`;
     if(closed){
       j.matches.forEach((m,idx)=>{
