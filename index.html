@@ -788,15 +788,23 @@ const TRI='<svg class="tri" viewBox="0 0 24 24"><path d="M12 4 L20.7 19 L3.3 19 
 function renderOrg(){
   if(!ORG){$("v-org").innerHTML=`<div class="card"><h2 class="sec">${TRI} Organizador</h2>
     <p class="muted">Esta sección es solo para el organizador. Tu cuenta no tiene permisos de organizador.</p></div>`;return;}
-  let h='<div class="card"><h2 class="sec">'+TRI+' Organizador</h2><p class="muted">Mete resultados, gestiona jornadas, el cuadro y los premios individuales. El ranking se actualiza solo.</p></div>';
-  h+='<div class="card"><div class="subhead" style="margin-top:0">Resultados</div>';
+  let h='<div class="card"><h2 class="sec">'+TRI+' Organizador</h2><p class="muted">Los resultados llegan solos. Aquí eliges el <b>partido de la jornada</b>, gestionas las jornadas y el cuadro, y metes los premios individuales. El ranking se actualiza solo.</p></div>';
+  h+='<div class="card"><div class="subhead" style="margin-top:0">Partido de la jornada ★</div>';
+  h+='<p class="muted">Marca en cada jornada el <b>partido destacado</b> (resultado exacto, 5/3/1). El de <b>España</b> ya va marcado solo. Solo se puede elegir <b>uno</b> por jornada.</p>';
   ST.jornadas.slice().reverse().forEach((j,ri)=>{
-    const done=j.matches.filter(m=>m.result).length;
-    const o=openAcc["res"+j.clave]!==undefined?openAcc["res"+j.clave]:(ri===0);
-    h+=`<div class="acc ${o?"open":""}"><div class="h" onclick="tacc('res${j.clave}')"><div><span class="t">${esc(j.name)}</span> <span class="meta">${done}/${j.matches.length}</span></div><span class="chev">▾</span></div><div class="b">`;
-    j.matches.forEach((m,idx)=>{h+=`<div class="match"><div class="mt"><span class="gr">${m.group}</span><span class="nm">${esc(m.home)} - ${esc(m.away)} ${m.exact?'<span class="star">★</span>':""}</span></div><input data-ri="${idx}" placeholder="${m.exact?"marcador ej. 2-1":"1 / x / 2  (o marcador)"}" value="${esc(m.result)}" style="margin-top:4px"></div>`;});
-    h+=`<button class="btn" style="margin-top:10px" onclick="saveResults('${j.clave}',this)">Guardar resultados</button></div></div>`;
+    const o=openAcc["pj"+j.clave]!==undefined?openAcc["pj"+j.clave]:(ri===0);
+    const cur=j.matches.findIndex(m=>m.exact&&!isSpain(m));
+    h+=`<div class="acc ${o?"open":""}"><div class="h" onclick="tacc('pj${j.clave}')"><div><span class="t">${esc(j.name)}</span> <span class="meta">${cur>=0?"★ elegido":"sin elegir"}</span></div><span class="chev">▾</span></div><div class="b">`;
+    j.matches.forEach((m,idx)=>{
+      if(isSpain(m)){
+        h+=`<div class="bx"><div class="tm">${esc(m.group)} ${esc(m.home)} - ${esc(m.away)} <span class="esp">ESP</span></div><span class="chip ok">★ exacto</span></div>`;
+      }else{
+        h+=`<div class="bx"><div class="tm">${esc(m.group)} ${esc(m.home)} - ${esc(m.away)}</div><button class="${m.exact?"sel":""}" onclick="pickPJ('${j.clave}',${idx})">${m.exact?"★ jornada":"★"}</button></div>`;
+      }
+    });
+    h+=`<button class="btn" style="margin-top:10px" onclick="saveJornadaPick('${j.clave}',this)">Guardar partido de la jornada</button></div></div>`;
   });
+  h+='<div class="notice" style="margin-top:8px">Los <b>resultados se actualizan solos</b> desde fuentes oficiales. Pueden tardar un poco más de lo normal (hasta una hora aprox.). No hay que meterlos a mano.</div>';
   h+='</div>';
   h+=`<div class="card"><div class="subhead" style="margin-top:0">Crear o editar jornada</div>
     <select id="jedit" onchange="loadJEdit()"><option value="__new">+ Crear jornada nueva</option>${ST.jornadas.map(j=>`<option value="${j.clave}">✎ ${esc(j.name)}</option>`).join("")}</select>
@@ -884,9 +892,19 @@ async function delJornada(){const clave=$("jclave").value.trim().toUpperCase();c
   ST.jornadas=ST.jornadas.filter(x=>x.clave!==clave);await sset("jornadas",ST.jornadas);
   for(const id in ST.pdata){if(ST.pdata[id].preds&&ST.pdata[id].preds[clave]){delete ST.pdata[id].preds[clave];await savePlayer(id);}}
   toast("Jornada borrada");renderActive();}
-async function saveResults(clave,btn){const j=ST.jornadas.find(x=>x.clave===clave),body=btn.closest(".b");
-  body.querySelectorAll("[data-ri]").forEach(inp=>{j.matches[+inp.dataset.ri].result=inp.value.trim();});
-  const ok=await sset("jornadas",ST.jornadas);toast(ok?"✓ Resultados guardados":"▲ Publica la app para guardar");renderActive();}
+// Elegir/desmarcar el partido de la jornada (solo uno; España siempre exacto).
+function pickPJ(clave,idx){
+  const j=ST.jornadas.find(x=>x.clave===clave);if(!j)return;
+  const already=j.matches[idx].exact&&!isSpain(j.matches[idx]);
+  j.matches.forEach((m,i)=>{
+    if(isSpain(m)){m.exact=true;m.tag="espana";}
+    else{const sel=(i===idx&&!already);m.exact=sel;m.tag=sel?"jornada":"";}
+  });
+  renderActive();
+}
+async function saveJornadaPick(clave,btn){
+  const ok=await sset("jornadas",ST.jornadas);
+  toast(ok?"✓ Partido de la jornada guardado":"▲ No se pudo guardar");renderActive();}
 function brHint(){const el=$("brhint");if(!el)return;const n=$("br16").value.split("\n").map(l=>l.trim()).filter(l=>l.includes("-")).length;
   if(!n){el.textContent="";return;}const s=ROUNDS.findIndex(r=>r.size<=n);el.textContent=`Detectado: ${s<0?"—":ROUNDS[s].name} (${n} cruces)`;}
 async function saveBracketCfg(){const lines=$("br16").value.split("\n").map(l=>l.trim()).filter(Boolean);
