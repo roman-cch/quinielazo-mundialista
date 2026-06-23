@@ -27,13 +27,13 @@ exports.handler = async (event) => {
   const auth = admin.auth();
   const db = admin.database();
   const resetPasswords = !!body.resetPasswords;
-  const results = [];
 
-  for (const p of PLAYERS) {
+  // En paralelo: asegurar cada cuenta de Auth y sus custom claims (evita el timeout).
+  const results = await Promise.all(PLAYERS.map(async (p) => {
     const email = synthEmail(p.name);
     const pass = initialPassword(p.name, p.id);
     const claims = { playerId: p.id, org: p.id === ORG_PLAYER_ID };
-    let uid, action;
+    let uid, action, freshLogin = false;
 
     try {
       const existing = await auth.getUserByEmail(email);
@@ -41,22 +41,32 @@ exports.handler = async (event) => {
       action = "ya-existía";
       if (resetPasswords) {
         await auth.updateUser(uid, { password: pass });
-        await db.ref("users/" + uid + "/mustChangePassword").set(true);
         action = "contraseña-reiniciada";
+        freshLogin = true; // volver a forzar el cambio de contraseña
       }
     } catch (e) {
       const created = await auth.createUser({ email, password: pass, displayName: p.name });
       uid = created.uid;
       action = "creado";
-      await db.ref("users/" + uid).set({ playerId: p.id, name: p.name, mustChangePassword: true });
+      freshLogin = true;
     }
 
     await auth.setCustomUserClaims(uid, claims);
-    // Asegura el nodo de mapeo aunque la cuenta ya existiera.
-    await db.ref("users/" + uid + "/playerId").set(p.id);
-    await db.ref("users/" + uid + "/name").set(p.name);
-    results.push({ id: p.id, name: p.name, email, action, org: claims.org });
-  }
+    return { id: p.id, name: p.name, email, uid, action, org: claims.org, freshLogin };
+  }));
 
-  return json(200, { ok: true, count: results.length, players: results });
+  // Una sola escritura multi-ruta a la base de datos (rápido y atómico).
+  const updates = {};
+  results.forEach((r) => {
+    updates["users/" + r.uid + "/playerId"] = r.id;
+    updates["users/" + r.uid + "/name"] = r.name;
+    if (r.freshLogin) updates["users/" + r.uid + "/mustChangePassword"] = true;
+  });
+  await db.ref().update(updates);
+
+  return json(200, {
+    ok: true,
+    count: results.length,
+    players: results.map((r) => ({ id: r.id, name: r.name, action: r.action, org: r.org })),
+  });
 };
