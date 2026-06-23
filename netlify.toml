@@ -3,6 +3,14 @@
   publish = "."
   command = ""
 
+[build.environment]
+  # El escáner de secretos de Netlify se queja de cosas que NO son secretas:
+  #  - FIREBASE_DB_URL es pública (va en la config del cliente en index.html).
+  #  - index.html contiene la config web de Firebase (apiKey, etc.), pública por diseño.
+  # Se excluyen solo estas; los secretos reales (service account, token, setup) se siguen escaneando.
+  SECRETS_SCAN_OMIT_KEYS = "FIREBASE_DB_URL"
+  SECRETS_SCAN_OMIT_PATHS = "index.html,.env.example"
+
 [functions]
   # Backend mínimo: sesiones, escritura autorizada y sync deportivo.
   directory = "netlify/functions"
