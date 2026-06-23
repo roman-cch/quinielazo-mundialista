@@ -125,7 +125,8 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--pink);bo
 .esp{display:inline-block;font-size:10px;font-weight:800;letter-spacing:1px;color:var(--gold);border:1px solid rgba(244,194,13,.5);border-radius:5px;padding:0 5px;margin-left:4px;text-shadow:0 0 8px rgba(244,194,13,.5)}
 .rkrow{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line)}
 .rkrow:last-child{border:0}
-.rkpos{width:24px;text-align:center;font-weight:800;color:var(--mut)}
+.rkpos{width:24px;text-align:center;font-weight:800;color:var(--mut);position:relative}
+.rkpos .tie{font-size:9px;color:var(--teal2);vertical-align:super;margin-left:1px}
 .rknm{flex:1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rkpt{font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums;text-shadow:0 0 9px rgba(244,194,13,.4)}
 .tag10{background:#3a2a05;color:var(--gold);border:1px solid #f4c20d55;border-radius:8px;font-size:10px;padding:2px 6px;font-weight:700}
@@ -617,7 +618,20 @@ function renderRank(){
     if(!p)return;h+=`<div class="pod ${cls}"><div class="medal">${med}</div>${dch(p)}<div class="nm">${esc(p.name)}</div><div class="pt">${p.pts} pts</div></div>`;});
   h+='</div>';
   if(!total&&maxPts===0)h+='<p class="empty" style="padding:8px 0">Aún no hay puntos en este segmento.</p>';
-  r.forEach((p,i)=>{h+=`<div class="rkrow"><div class="rkpos">${i+1}</div>${dch(p)}<div class="rknm">${esc(p.name)}</div><div class="rkpt">${p.pts}</div></div>`;});
+  // Puesto compartido en empates. En Total, "empate real" = mismos puntos, exactos y
+  // puntos de fase final (los criterios de desempate del reglamento §7); en una vista
+  // de jornada, basta con los mismos puntos.
+  const tieKey=p=>total?(p.pts+"|"+(p.exact||0)+"|"+(p.finalp||0)):String(p.pts);
+  let prevKey=null,prevPos=0;
+  r.forEach((p,i)=>{
+    const k=tieKey(p);
+    const samePrev=(i>0&&k===prevKey);
+    const pos=samePrev?prevPos:i+1;
+    const sameNext=(i<r.length-1&&tieKey(r[i+1])===k);
+    const tied=samePrev||sameNext;
+    h+=`<div class="rkrow"><div class="rkpos">${pos}${tied?'<span class="tie">=</span>':''}</div>${dch(p)}<div class="rknm">${esc(p.name)}</div><div class="rkpt">${p.pts}</div></div>`;
+    prevKey=k;prevPos=pos;
+  });
   h+='</div>';
   // El "mejor de la jornada · 10€" solo en la vista Total (premios de grupos).
   if(total){
