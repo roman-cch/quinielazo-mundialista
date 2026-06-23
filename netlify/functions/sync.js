@@ -8,6 +8,7 @@
 //   FOOTBALLDATA_COMP   -> código de competición (por defecto "WC")
 const { getAdmin } = require("./_lib/admin");
 const { esTeam } = require("./_lib/teams");
+const ORDER = require("./_lib/order"); // orden canónico (de fábrica) por jornada
 
 const enc = (k) => k.replace(/:/g, "_");
 const parse = (v) => { try { return typeof v === "string" ? JSON.parse(v) : v; } catch (e) { return null; } };
@@ -73,20 +74,40 @@ exports.handler = async () => {
     const prev = prevByClave[clave] || {};
     const prevMatchByKey = {};
     (prev.matches || []).forEach((m) => { prevMatchByKey[m.home + "|" + m.away] = m; });
-    const ms = byClave[clave].matches
-      .sort((a, b) => new Date(a._date) - new Date(b._date))
-      .map((m) => {
-        const pm = prevMatchByKey[m.home + "|" + m.away] || {};
-        return {
-          group: m.group || pm.group || "",
-          home: m.home,
-          away: m.away,
-          // España siempre exacto; conserva el "partido de la jornada" elegido por el organizador.
-          exact: isSpain(m) || !!pm.exact,
-          tag: isSpain(m) ? "espana" : (pm.tag || ""),
-          result: m.result || pm.result || "",
-        };
+    const syncedByKey = {};
+    byClave[clave].matches.forEach((m) => { syncedByKey[m.home + "|" + m.away] = m; });
+
+    const build = (m) => {
+      const pm = prevMatchByKey[m.home + "|" + m.away] || {};
+      return {
+        group: m.group || pm.group || "",
+        home: m.home,
+        away: m.away,
+        // España siempre exacto; conserva el "partido de la jornada" elegido por el organizador.
+        exact: isSpain(m) || !!pm.exact,
+        tag: isSpain(m) ? "espana" : (pm.tag || ""),
+        result: m.result || pm.result || "",
+      };
+    };
+
+    // IMPORTANTE: los pronósticos se guardan por POSICIÓN. Hay que mantener el orden
+    // canónico (de fábrica); NUNCA reordenar por fecha o se descuadra la puntuación.
+    let ms;
+    const canon = ORDER[clave];
+    if (canon) {
+      const used = new Set();
+      ms = [];
+      canon.forEach(([h, a]) => {
+        const key = h + "|" + a;
+        if (syncedByKey[key]) { ms.push(build(syncedByKey[key])); used.add(key); }
+        else if (prevMatchByKey[key]) { ms.push(build({ home: h, away: a })); used.add(key); }
       });
+      // partidos sincronizados que no estén en el orden canónico (no debería pasar en grupos), al final
+      byClave[clave].matches.forEach((m) => { const k = m.home + "|" + m.away; if (!used.has(k)) ms.push(build(m)); });
+    } else {
+      ms = byClave[clave].matches.sort((a, b) => new Date(a._date) - new Date(b._date)).map(build);
+    }
+
     return {
       clave,
       name: byClave[clave].name,
