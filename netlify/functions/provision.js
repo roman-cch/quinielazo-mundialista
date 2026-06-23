@@ -43,6 +43,13 @@ exports.handler = async (event) => {
         await auth.updateUser(uid, { password: pass });
         action = "contraseña-reiniciada";
         freshLogin = true; // volver a forzar el cambio de contraseña
+      } else {
+        // Cuenta preexistente sin reseteo: si nunca se le escribió el flag
+        // (nodo AUSENTE), repónlo a true. Es seguro porque quien ya cambió su
+        // contraseña tiene el flag en false (lo deja clearMustChange), nunca
+        // ausente; así no re-molestamos a quien ya la cambió.
+        const snap = await db.ref("users/" + uid + "/mustChangePassword").get();
+        if (!snap.exists()) freshLogin = true;
       }
     } catch (e) {
       const created = await auth.createUser({ email, password: pass, displayName: p.name });
