@@ -108,11 +108,14 @@ exports.handler = async () => {
       ms = byClave[clave].matches.sort((a, b) => new Date(a._date) - new Date(b._date)).map(build);
     }
 
+    // Cierre automático = inicio del primer partido de la jornada
+    // (reglamento: "los pronósticos deberán enviarse antes del inicio de cada jornada").
+    const firstKick = byClave[clave].matches.reduce((min, m) => (m._date && (!min || m._date < min)) ? m._date : min, null);
     return {
       clave,
       name: byClave[clave].name,
       factory: false,
-      closeTime: prev.closeTime || "", // la hora de cierre la fija el organizador
+      closeTime: firstKick || prev.closeTime || "",
       matches: ms,
     };
   });
@@ -128,8 +131,11 @@ exports.handler = async () => {
   Object.keys(ko).forEach((k) => ko[k].sort(ord));
 
   const existingBr = parse((await db.ref("quiniela/bracket").get()).val()) || { closeTime: "", r16: [], real: { w: {}, finalScore: "" } };
+  // Cierre automático del cuadro = inicio del primer partido de la eliminatoria
+  // (reglamento: "antes del inicio de las eliminatorias se completa la hoja de ruta").
+  const koFirst = ko[0].reduce((min, m) => (m.utcDate && (!min || m.utcDate < min)) ? m.utcDate : min, null);
   const bracket = {
-    closeTime: existingBr.closeTime || "",
+    closeTime: koFirst || existingBr.closeTime || "",
     r16: ko[0].length ? ko[0].map((m) => ({ a: esTeam(m.homeTeam.name), b: esTeam(m.awayTeam.name) })) : (existingBr.r16 || []),
     real: { w: {}, finalScore: existingBr.real ? existingBr.real.finalScore : "" },
   };
