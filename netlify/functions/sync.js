@@ -134,9 +134,12 @@ exports.handler = async () => {
   // Cierre automático del cuadro = inicio del primer partido de la eliminatoria
   // (reglamento: "antes del inicio de las eliminatorias se completa la hoja de ruta").
   const koFirst = ko[0].reduce((min, m) => (m.utcDate && (!min || m.utcDate < min)) ? m.utcDate : min, null);
+  // Solo cruces con equipos REALES: football-data ya expone la estructura con
+  // equipos TBD (null) antes del sorteo; no cargamos esos placeholders.
+  const r16real = ko[0].map((m) => ({ a: esTeam(m.homeTeam && m.homeTeam.name), b: esTeam(m.awayTeam && m.awayTeam.name) })).filter((c) => c.a && c.b);
   const bracket = {
     closeTime: koFirst || existingBr.closeTime || "",
-    r16: ko[0].length ? ko[0].map((m) => ({ a: esTeam(m.homeTeam.name), b: esTeam(m.awayTeam.name) })) : (existingBr.r16 || []),
+    r16: r16real.length ? r16real : [],
     real: { w: {}, finalScore: existingBr.real ? existingBr.real.finalScore : "" },
   };
   const winnerOf = (m) => m.score && m.score.winner === "HOME_TEAM" ? esTeam(m.homeTeam.name)

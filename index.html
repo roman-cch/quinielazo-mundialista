@@ -174,6 +174,12 @@ label.fld{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
 .empty{text-align:center;color:var(--mut);padding:30px 10px;font-size:13px}
 .subhead{font-weight:700;font-size:14px;margin:14px 0 8px;color:#e7ecff;padding-left:10px;border-left:3px solid var(--pink);line-height:1.25}
+/* Selector de vista del ranking: chips translucidas con scroll horizontal */
+.segbar{display:flex;gap:7px;overflow-x:auto;padding:2px 1px 10px;margin:2px -2px 6px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.segbar::-webkit-scrollbar{display:none}
+.seg{flex:0 0 auto;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--mut);border-radius:999px;padding:7px 14px;font-size:13px;font-weight:700;white-space:nowrap;font-family:inherit;transition:.15s}
+.seg:active{transform:scale(.96)}
+.seg.on{background:linear-gradient(180deg,rgba(31,184,155,.5),rgba(58,91,217,.42));border-color:rgba(21,214,168,.8);color:#fff;box-shadow:0 0 12px rgba(31,184,155,.26),0 1px 0 rgba(255,255,255,.25) inset}
 /* Puerta de autenticación: tapa toda la app hasta que hay sesión */
 .authgate{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:24px;
   padding-top:calc(var(--safetop) + 24px);overflow:auto;
@@ -451,7 +457,7 @@ async function slist(pre,sh=SHARE){
 function pj(v,d){if(v==null)return d;try{return JSON.parse(v)}catch(e){return d}}
 
 let ST={jornadas:[],bracket:null,sidebet:null,pdata:{}};
-let ME=null, ORG=false, openAcc={}, CURTAB="rank";
+let ME=null, ORG=false, openAcc={}, CURTAB="rank", RANKVIEW="total";
 
 async function loadAll(){
   let j=pj(await sget("jornadas"),null);
@@ -526,6 +532,35 @@ function ranking(){
   arr.sort((a,b)=>b.pts-a.pts||b.exact-a.exact||b.finalp-a.finalp||a.dorsal-b.dorsal);
   return arr;
 }
+// La eliminatoria solo "existe" cuando hay cruces con equipos reales (no TBD).
+function bracketReady(){return !!(ST.bracket&&ST.bracket.r16&&ST.bracket.r16.some(c=>c&&c.a&&c.b));}
+// Puntos de un jugador en una ronda de eliminatoria concreta (avances + bonus en la final).
+function roundScore(id,r){
+  const b=ST.bracket;if(!b||!b.r16||!b.r16.length)return 0;
+  const pd=ST.pdata[id];if(!pd||!pd.bracket)return 0;
+  const pk=pd.bracket.picks||{},real=(b.real.w[r]||{});let pts=0;
+  for(let i=0;i<ROUNDS[r].size;i++){if(real[i]&&pk[r]&&pk[r][i]&&pk[r][i]===real[i])pts+=ROUNDS[r].pts;}
+  if(r===ROUNDS.length-1&&b.real.finalScore&&pd.bracket.bonus)pts+=exactPts(pd.bracket.bonus,b.real.finalScore,true);
+  return pts;
+}
+// Puntos segun el segmento elegido en el ranking (mismos datos, distinta vista).
+function segScore(id,view){
+  if(view==="total")return totalScore(id).pts;
+  if(view.indexOf("j:")===0){const j=ST.jornadas.find(x=>x.clave===view.slice(2));return j?jornadaScore(id,j).pts:0;}
+  if(view.indexOf("r:")===0)return roundScore(id,+view.slice(2));
+  return 0;
+}
+// Lista de segmentos disponibles para el selector (solo los que aplican).
+function rankSegments(){
+  const segs=[{v:"total",l:"Total"}];
+  ST.jornadas.forEach(j=>segs.push({v:"j:"+j.clave,l:j.clave}));
+  if(bracketReady()){
+    const sh={r16:"16avos",oct:"Octavos",cua:"Cuartos",sem:"Semis",fin:"Final"};
+    for(let r=startIdx();r<ROUNDS.length;r++)segs.push({v:"r:"+r,l:sh[ROUNDS[r].key]||ROUNDS[r].name});
+  }
+  return segs;
+}
+function setRankView(v){RANKVIEW=v;renderRank();}
 function bestOfJornada(j){
   if(!j.matches.length||!j.matches.every(m=>m.result))return null;
   let best=-1,winners=[];
@@ -556,18 +591,36 @@ function fmt(iso){try{return new Date(iso).toLocaleString("es-ES",{day:"2-digit"
 
 /* ============ RANKING ============ */
 function renderRank(){
-  const r=ranking();const top=r.slice(0,3);
-  let h='<div class="card"><h2 class="sec">○ Ranking en vivo</h2><div class="podium">';
+  const segs=rankSegments();
+  if(!segs.some(s=>s.v===RANKVIEW))RANKVIEW="total";
+  const total=RANKVIEW==="total";
+  // Ranking del segmento elegido (en total se usan los desempates ricos).
+  let r;
+  if(total)r=ranking();
+  else r=PLAYERS.map(p=>({...p,pts:segScore(p.id,RANKVIEW)})).sort((a,b)=>b.pts-a.pts||a.dorsal-b.dorsal);
+  const top=r.slice(0,3);
+  const segLabel=(segs.find(s=>s.v===RANKVIEW)||{}).l||"Total";
+  const maxPts=r.length?r[0].pts:0;
+
+  let h='<div class="card"><h2 class="sec">○ Ranking en vivo</h2>';
+  // Selector de vista (Total / jornadas / rondas). Mismos datos, distinta vista.
+  h+='<div class="segbar">'+segs.map(s=>`<button class="seg ${s.v===RANKVIEW?"on":""}" onclick="setRankView('${s.v}')">${esc(s.l)}</button>`).join("")+'</div>';
+  if(!total)h+=`<p class="muted" style="margin:-2px 0 10px">Clasificación de <b>${esc(segLabel)}</b>.</p>`;
+  h+='<div class="podium">';
   [["p2",top[1],"2"],["p1",top[0],"1"],["p3",top[2],"3"]].forEach(([cls,p,med])=>{
     if(!p)return;h+=`<div class="pod ${cls}"><div class="medal">${med}</div>${dch(p)}<div class="nm">${esc(p.name)}</div><div class="pt">${p.pts} pts</div></div>`;});
   h+='</div>';
+  if(!total&&maxPts===0)h+='<p class="empty" style="padding:8px 0">Aún no hay puntos en este segmento.</p>';
   r.forEach((p,i)=>{h+=`<div class="rkrow"><div class="rkpos">${i+1}</div>${dch(p)}<div class="rknm">${esc(p.name)}</div><div class="rkpt">${p.pts}</div></div>`;});
   h+='</div>';
-  const wins=[];ST.jornadas.forEach(j=>{const b=bestOfJornada(j);if(b)wins.push([j,b]);});
-  if(wins.length){h+='<div class="card"><h2 class="sec">△ Mejor de la jornada · 10€</h2>';
-    wins.forEach(([j,b])=>{h+=`<div class="kvr"><span>${esc(j.name)} <span class="tag10">10€</span></span><b>${b.winners.map(w=>esc(w.name)).join(", ")} · ${b.best} pts</b></div>`;});
-    h+='</div>';}
-  h+='<p class="muted" style="text-align:center">Se actualiza solo según el organizador mete resultados. ○ △ □</p>';
+  // El "mejor de la jornada · 10€" solo en la vista Total (premios de grupos).
+  if(total){
+    const wins=[];ST.jornadas.forEach(j=>{const b=bestOfJornada(j);if(b)wins.push([j,b]);});
+    if(wins.length){h+='<div class="card"><h2 class="sec">△ Mejor de la jornada · 10€</h2>';
+      wins.forEach(([j,b])=>{h+=`<div class="kvr"><span>${esc(j.name)} <span class="tag10">10€</span></span><b>${b.winners.map(w=>esc(w.name)).join(", ")} · ${b.best} pts</b></div>`;});
+      h+='</div>';}
+  }
+  h+='<p class="muted" style="text-align:center">Se actualiza solo en cuanto entran los resultados. ○ △ □</p>';
   $("v-rank").innerHTML=h;
 }
 
@@ -609,7 +662,7 @@ function renderProns(){
 
   /* --- Fase eliminatoria: una ronda por acordeón (abierta=editar, cerrada=solo ver) --- */
   const b=ST.bracket;
-  if(b&&b.r16&&b.r16.length){
+  if(bracketReady()){
     const brClosed=b.closeTime&&new Date(b.closeTime)<new Date();
     const pd=pdataOf(ME);pd.bracket=pd.bracket||{picks:{},bonus:""};const pk=pd.bracket.picks;
     const st=startIdx();const act=ROUNDS.slice(st);
@@ -816,17 +869,6 @@ function renderOrg(){
   });
   h+='<div class="notice" style="margin-top:8px">Los <b>resultados se actualizan solos</b> desde fuentes oficiales. Pueden tardar un poco más de lo normal (hasta una hora aprox.). No hay que meterlos a mano.</div>';
   h+='</div>';
-  h+=`<div class="card"><div class="subhead" style="margin-top:0">Crear o editar jornada</div>
-    <select id="jedit" onchange="loadJEdit()"><option value="__new">+ Crear jornada nueva</option>${ST.jornadas.map(j=>`<option value="${j.clave}">✎ ${esc(j.name)}</option>`).join("")}</select>
-    <label class="fld">Nombre visible</label><input id="jname" placeholder="Jornada 3">
-    <label class="fld">Clave única (ej. J3, OCT)</label><input id="jclave" placeholder="J3">
-    <label class="fld">Partidos (uno por línea: <b>Grupo Local-Visitante</b>)</label>
-    <textarea id="jmatches" oninput="onJmatches()" placeholder="A3 México-Corea del Sur&#10;H3 España-Uruguay"></textarea>
-    <button class="btn ghost" style="margin-top:8px" onclick="onJmatches()">Cargar partidos ↓</button>
-    <div id="exactbox"></div>
-    <label class="fld">Hora de cierre (antes del primer partido)</label><input id="jclose" type="datetime-local">
-    <button class="btn" style="margin-top:12px" onclick="saveJornada()" id="jsavebtn">Crear jornada</button>
-    <button class="btn danger" style="margin-top:8px;display:none" id="jdelbtn" onclick="delJornada()">✕ Borrar jornada</button></div>`;
   const b=ST.bracket;
   h+=`<div class="card"><div class="subhead" style="margin-top:0">Fase eliminatoria · cuadro</div>
     <div class="notice">El <b>cuadro completo</b> (cruces, resultados y la <b>fecha de cierre</b>) se genera y actualiza <b>solo</b> desde fuentes oficiales cuando empiece la eliminatoria. No hay que tocar nada.<br>${b.r16&&b.r16.length?("Cuadro actual: <b>"+b.r16.length+"</b> cruces · cierre "+(b.closeTime?fmt(b.closeTime):"se fijará solo")):"Aún no hay cruces (se cargarán al sortearse la eliminatoria)."}</div>
@@ -843,45 +885,7 @@ function renderOrg(){
   h+='<button class="btn ghost" onclick="go(\'rank\')">Volver al ranking</button>';
   $("v-org").innerHTML=h;
 }
-function loadJEdit(){const v=$("jedit").value,del=$("jdelbtn"),btn=$("jsavebtn");
-  if(v==="__new"){$("jname").value="";$("jclave").value="";$("jclave").disabled=false;$("jmatches").value="";$("jclose").value="";del.style.display="none";btn.textContent="Crear jornada";$("exactbox").innerHTML="";return;}
-  const j=ST.jornadas.find(x=>x.clave===v);if(!j)return;
-  $("jname").value=j.name;$("jclave").value=j.clave;$("jclave").disabled=true;
-  $("jmatches").value=j.matches.map(m=>m.group+" "+m.home+"-"+m.away).join("\n");
-  $("jclose").value=j.closeTime?j.closeTime.slice(0,16):"";
-  btn.textContent="Guardar cambios";del.style.display=j.factory?"none":"block";
-  buildExactBox(j.matches);
-}
-function onJmatches(){buildExactBox(parseMatchLines($("jmatches").value));}
 function isSpain(m){return /españa/i.test(m.home)||/españa/i.test(m.away);}
-function buildExactBox(matches){const box=$("exactbox");if(!matches.length){box.innerHTML="";return;}
-  let h='<label class="fld">★ Toca para marcar los partidos a <b>resultado exacto</b> (5/3/1): el de <b>España</b> (se marca solo) y el <b>partido de la jornada</b> que elijáis.</label>';
-  matches.forEach((m,i)=>{const on=m.exact||isSpain(m);
-    h+=`<div class="bx"><div class="tm">${esc(m.group)} ${esc(m.home)} - ${esc(m.away)}${isSpain(m)?' <span class="esp">ESP</span>':''}</div><button class="${on?"sel":""}" data-ex="${i}" onclick="this.classList.toggle('sel')">★ exacto</button></div>`;});
-  box.innerHTML=h;}
-function parseMatchLines(txt){const out=[];txt.split("\n").forEach(line=>{line=line.trim();if(!line)return;
-  const sp=line.indexOf(" ");if(sp<0)return;const group=line.slice(0,sp).trim(),rest=line.slice(sp+1).trim();
-  const d=rest.indexOf("-");if(d<0)return;out.push({group,home:rest.slice(0,d).trim(),away:rest.slice(d+1).trim(),exact:false,tag:"",result:""});});return out;}
-async function saveJornada(){
-  const name=$("jname").value.trim(),clave=$("jclave").value.trim().toUpperCase();
-  if(!name||!clave){toast("Pon nombre y clave");return;}
-  let ms=parseMatchLines($("jmatches").value);if(!ms.length){toast("Pega los partidos");return;}
-  document.querySelectorAll('#exactbox [data-ex]').forEach(btn=>{if(btn.classList.contains("sel"))ms[+btn.dataset.ex].exact=true;});
-  const close=$("jclose").value?new Date($("jclose").value).toISOString():"";
-  const existing=ST.jornadas.find(j=>j.clave===clave);
-  if(existing){const old={};existing.matches.forEach(m=>old[m.home+"|"+m.away]=m.result);
-    ms.forEach(m=>{if(old[m.home+"|"+m.away])m.result=old[m.home+"|"+m.away];});
-    existing.name=name;existing.matches=ms;existing.closeTime=close;
-  }else{if($("jedit").value==="__new"&&ST.jornadas.some(j=>j.clave===clave)){toast("Esa clave ya existe");return;}
-    ST.jornadas.push({clave,name,factory:false,closeTime:close,matches:ms});}
-  const ok=await sset("jornadas",ST.jornadas);toast(ok?"✓ Jornada guardada":"▲ Publica la app para guardar");ORG=true;renderActive();
-}
-async function delJornada(){const clave=$("jclave").value.trim().toUpperCase();const j=ST.jornadas.find(x=>x.clave===clave);
-  if(!j||j.factory){toast("No se puede borrar");return;}
-  if(!confirm("¿Borrar "+j.name+" y sus pronósticos?"))return;
-  ST.jornadas=ST.jornadas.filter(x=>x.clave!==clave);await sset("jornadas",ST.jornadas);
-  for(const id in ST.pdata){if(ST.pdata[id].preds&&ST.pdata[id].preds[clave]){delete ST.pdata[id].preds[clave];await savePlayer(id);}}
-  toast("Jornada borrada");renderActive();}
 // Elegir/desmarcar el partido de la jornada (solo uno; España siempre exacto).
 function pickPJ(clave,idx){
   const j=ST.jornadas.find(x=>x.clave===clave);if(!j)return;
