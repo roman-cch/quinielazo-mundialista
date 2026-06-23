@@ -170,7 +170,7 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--pink);bo
 .rndlbl{color:var(--pink2);font-weight:800;font-size:12px;letter-spacing:1.5px;margin:14px 0 6px;text-transform:uppercase;text-shadow:0 0 10px rgba(255,46,142,.4)}
 textarea{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:10px;font-size:14px;width:100%;font-family:inherit;min-height:90px;resize:vertical}
 label.fld{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
-.toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:linear-gradient(180deg,rgba(21,214,168,.92),rgba(31,184,155,.85));color:#03241d;font-weight:700;padding:11px 18px;border-radius:999px;z-index:50;opacity:0;transition:.25s;pointer-events:none;max-width:90%;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 8px 26px rgba(0,0,0,.4),0 0 18px rgba(31,184,155,.45)}
+.toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:linear-gradient(180deg,rgba(21,214,168,.92),rgba(31,184,155,.85));color:#03241d;font-weight:700;padding:11px 18px;border-radius:999px;z-index:120;opacity:0;transition:.25s;pointer-events:none;max-width:90%;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 8px 26px rgba(0,0,0,.4),0 0 18px rgba(31,184,155,.45)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
 .empty{text-align:center;color:var(--mut);padding:30px 10px;font-size:13px}
 .subhead{font-weight:700;font-size:14px;margin:14px 0 8px;color:#e7ecff;padding-left:10px;border-left:3px solid var(--pink);line-height:1.25}
@@ -184,6 +184,14 @@ label.fld{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 .authgate .sym span:nth-child(1){color:var(--pink2)}.authgate .sym span:nth-child(2){color:var(--teal2)}.authgate .sym span:nth-child(3){color:var(--blue2)}
 .authgate h1{margin:8px 0 10px;text-align:center;font-family:"Audiowide",sans-serif;font-size:22px;font-weight:400;letter-spacing:1px;
   background:linear-gradient(180deg,#fff,#ffc8e1);-webkit-background-clip:text;background-clip:text;color:transparent}
+.authgate .hint{font-size:11px;color:var(--mut);margin:5px 2px 2px;line-height:1.35}
+.authgate code{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:5px;font-size:12px}
+.pwwrap{position:relative}
+.pwwrap input{padding-right:46px}
+.pwwrap .eye{position:absolute;right:5px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--mut);font-size:19px;line-height:1;padding:6px 7px;cursor:pointer}
+.autherr{min-height:16px;margin-top:10px;font-size:13px;line-height:1.35;text-align:center}
+.autherr.bad{color:#ff9db1}
+.autherr.info{color:#9fb0ff}
 </style>
 </head>
 <body>
@@ -924,15 +932,23 @@ window.__onSignedOut=function(){ME=null;ORG=false;BOOTED=false;showLogin();};
 function authGate(){return $("authgate");}
 function showAuthGate(html){const g=authGate();g.innerHTML=html;g.classList.add("show");}
 function hideAuthGate(){authGate().classList.remove("show");}
+// Mensaje visible DENTRO de la pantalla de login (el toast queda tapado por el overlay).
+function setAuthMsg(msg,kind){const e=$("autherr");if(!e)return;e.textContent=msg||"";e.className="autherr"+(kind?(" "+kind):"");}
+// Botón 👁 para mostrar/ocultar lo que se escribe en un campo de contraseña.
+function togglePw(id,btn){const i=$(id);if(!i)return;const show=i.type==="password";i.type=show?"text":"password";btn.textContent=show?"🙈":"👁";}
+const pwField=(id)=>`<div class="pwwrap"><input id="${id}" type="password" autocomplete="off" placeholder="••••••"><button type="button" class="eye" onclick="togglePw('${id}',this)" aria-label="Ver contraseña">👁</button></div>`;
+
 function showLogin(){
   showAuthGate(`<div class="authbox">
     <div class="sym"><span>○</span> <span>△</span> <span>□</span></div>
     <h1>QUINIELAZO</h1>
     <p class="muted" style="text-align:center;margin:0 0 14px">Entra con tu nombre y tu contraseña</p>
     <label class="fld">Tu nombre</label><input id="loginname" autocomplete="username" placeholder="Ej. Fer Taranco">
-    <label class="fld">Contraseña</label><input id="loginpw" type="password" autocomplete="current-password" placeholder="••••••">
+    <div class="hint">Da igual mayúsculas, tildes o espacios: "Jose Luis", "josé luis" o "JOSE LUIS" valen igual.</div>
+    <label class="fld">Contraseña</label>${pwField("loginpw")}
     <button class="btn" style="margin-top:14px" onclick="doLogin()">Entrar</button>
-    <p class="muted" style="margin-top:12px">La primera vez tu contraseña es tu propio nombre; al entrar te pediremos cambiarla.</p>
+    <div id="autherr" class="autherr"></div>
+    <p class="muted" style="margin-top:8px">La primera vez tu contraseña es <b>tu propio nombre en minúsculas y sin espacios</b> (ej. Fer Taranco → <code>fertaranco</code>). Al entrar te pediremos cambiarla.</p>
   </div>`);
   setTimeout(()=>{const i=$("loginpw");if(i)i.addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});},0);
 }
@@ -941,30 +957,48 @@ function showChangePw(){
     <div class="sym"><span>○</span> <span>△</span> <span>□</span></div>
     <h1>NUEVA CONTRASEÑA</h1>
     <p class="muted" style="text-align:center;margin:0 0 14px">Por seguridad, elige tu propia contraseña.</p>
-    <label class="fld">Nueva contraseña (mín. 6)</label><input id="cpw1" type="password" autocomplete="new-password" placeholder="••••••">
-    <label class="fld">Repítela</label><input id="cpw2" type="password" autocomplete="new-password" placeholder="••••••">
+    <label class="fld">Nueva contraseña (mín. 6)</label>${pwField("cpw1")}
+    <label class="fld">Repítela</label>${pwField("cpw2")}
     <button class="btn" style="margin-top:14px" onclick="doChangePw()">Guardar y entrar</button>
+    <div id="autherr" class="autherr"></div>
     <button class="btn ghost" style="margin-top:8px" onclick="doLogout()">Cancelar</button>
   </div>`);
 }
 async function doLogin(){
   const name=($("loginname").value||"").trim(),pass=$("loginpw").value||"";
-  if(!name||!pass){toast("Pon tu nombre y tu contraseña");return;}
-  try{await window.__auth.signIn(name,pass);}        // onAuthStateChanged disparará __onSignedIn
-  catch(e){toast("Nombre o contraseña incorrectos");}
+  if(!name||!pass){setAuthMsg("Escribe tu nombre y tu contraseña","bad");return;}
+  setAuthMsg("Entrando…","info");
+  try{await window.__auth.signIn(name,pass);return;}  // éxito -> onAuthStateChanged
+  catch(e){
+    const code=(e&&e.code)||"";
+    if(code==="auth/invalid-email"){setAuthMsg("Ese nombre no es válido.","bad");return;}
+    if(code==="auth/too-many-requests"){setAuthMsg("Demasiados intentos. Espera un par de minutos e inténtalo otra vez.","bad");return;}
+    if(code==="auth/network-request-failed"){setAuthMsg("Sin conexión a internet. Revísala e inténtalo de nuevo.","bad");return;}
+    // Credencial inválida: averiguamos si el fallo es el nombre o la contraseña.
+    let exists=null;
+    try{const r=await fetch("/.netlify/functions/userexists",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name})});if(r.ok)exists=(await r.json()).exists;}catch(_){}
+    if(exists===false)setAuthMsg("No existe ningún jugador con ese nombre. Escríbelo como en la lista (p. ej. Fer Taranco).","bad");
+    else if(exists===true)setAuthMsg("El nombre es correcto, pero la contraseña no. Si es tu primera vez, es tu nombre en minúsculas y sin espacios.","bad");
+    else setAuthMsg("Nombre o contraseña incorrectos."+(code?(" ("+code+")"):""),"bad");
+  }
 }
 async function doChangePw(){
   const p1=$("cpw1").value||"",p2=$("cpw2").value||"";
-  if(p1.length<6){toast("Mínimo 6 caracteres");return;}
-  if(p1!==p2){toast("Las contraseñas no coinciden");return;}
+  if(p1.length<6){setAuthMsg("La contraseña debe tener al menos 6 caracteres.","bad");return;}
+  if(p1!==p2){setAuthMsg("Las dos contraseñas no coinciden.","bad");return;}
+  setAuthMsg("Guardando…","info");
   try{
     await window.__auth.changePassword(p1);
     await clearMustChange();
-    toast("✓ Contraseña actualizada");
     hideAuthGate();
     if(!BOOTED){BOOTED=true;window.__attachData();}
     await init();
-  }catch(e){toast("No se pudo cambiar: vuelve a entrar e inténtalo");}
+    toast("✓ Contraseña actualizada");
+  }catch(e){
+    const code=(e&&e.code)||"";
+    if(code==="auth/weak-password")setAuthMsg("Contraseña demasiado débil; prueba con otra más larga.","bad");
+    else setAuthMsg("No se pudo cambiar. Cierra sesión, vuelve a entrar e inténtalo."+(code?(" ("+code+")"):""),"bad");
+  }
 }
 async function doLogout(){try{await window.__auth.signOut();}catch(e){}}
 </script>
