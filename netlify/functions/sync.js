@@ -137,9 +137,12 @@ exports.handler = async () => {
   // Solo cruces con equipos REALES: football-data ya expone la estructura con
   // equipos TBD (null) antes del sorteo; no cargamos esos placeholders.
   const r16real = ko[0].map((m) => ({ a: esTeam(m.homeTeam && m.homeTeam.name), b: esTeam(m.awayTeam && m.awayTeam.name) })).filter((c) => c.a && c.b);
+  // Si la API aún no trae cruces reales pero ya hay un cuadro sorteado guardado, se conserva;
+  // si solo había placeholders TBD (o nada), queda vacío y se limpian esos placeholders.
+  const existingReal = (existingBr.r16 || []).some((c) => c && c.a && c.b);
   const bracket = {
     closeTime: koFirst || existingBr.closeTime || "",
-    r16: r16real.length ? r16real : [],
+    r16: r16real.length ? r16real : (existingReal ? existingBr.r16 : []),
     real: { w: {}, finalScore: existingBr.real ? existingBr.real.finalScore : "" },
   };
   const winnerOf = (m) => m.score && m.score.winner === "HOME_TEAM" ? esTeam(m.homeTeam.name)
@@ -157,7 +160,8 @@ exports.handler = async () => {
 
   const changed = [];
   if (jornadas.length && await setIfChanged(db, "jornadas", jornadas)) changed.push("jornadas");
-  if (bracket.r16.length && await setIfChanged(db, "bracket", bracket)) changed.push("bracket");
+  // Sin guard de longitud: hay que poder escribir un cuadro vacío para limpiar placeholders TBD.
+  if (await setIfChanged(db, "bracket", bracket)) changed.push("bracket");
   await db.ref("quiniela/" + enc("_lastsync")).set(JSON.stringify({ at: new Date().toISOString(), changed }));
 
   return { statusCode: 200, body: JSON.stringify({ ok: true, jornadas: jornadas.length, changed }) };
