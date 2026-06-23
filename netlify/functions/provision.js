@@ -7,7 +7,7 @@
 //   POST { secret: "<SETUP_SECRET>", resetPasswords?: true }
 const { getAdmin } = require("./_lib/admin");
 const { json, verifyToken } = require("./_lib/http");
-const { PLAYERS, ORG_PLAYER_ID, synthEmail, initialPassword } = require("./_lib/players");
+const { PLAYERS, ORG_PLAYER_IDS, synthEmail, initialPassword } = require("./_lib/players");
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") return json(405, { error: "Método no permitido" });
@@ -32,7 +32,7 @@ exports.handler = async (event) => {
   const results = await Promise.all(PLAYERS.map(async (p) => {
     const email = synthEmail(p.name);
     const pass = initialPassword(p.name, p.id);
-    const claims = { playerId: p.id, org: p.id === ORG_PLAYER_ID };
+    const claims = { playerId: p.id, org: ORG_PLAYER_IDS.includes(p.id) };
     let uid, action, freshLogin = false;
 
     try {

@@ -17,8 +17,9 @@ const PLAYERS = [
   { id: 27, name: "Luis Riesgo" },
 ];
 
-// Dorsal del organizador (Roman Cano). Recibe el custom claim org:true.
-const ORG_PLAYER_ID = 19;
+// Dorsales de los organizadores. Reciben el custom claim org:true.
+// 1=Sergio Acevedo, 2=Diego Serrano, 3=Julio Lopez, 19=Roman Cano.
+const ORG_PLAYER_IDS = [1, 2, 3, 19];
 
 // Normaliza un nombre a un slug seguro: minúsculas, sin acentos, sin signos.
 // "José Luis" -> "joseluis"  ·  "Sergio M" -> "sergiom"
@@ -43,4 +44,4 @@ function initialPassword(name, id) {
   return base.length >= 6 ? base : base + String(id).padStart(2, "0");
 }
 
-module.exports = { PLAYERS, ORG_PLAYER_ID, normalizeName, synthEmail, initialPassword };
+module.exports = { PLAYERS, ORG_PLAYER_IDS, normalizeName, synthEmail, initialPassword };

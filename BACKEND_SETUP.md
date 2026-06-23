@@ -56,8 +56,9 @@ curl -X POST https://TU-SITIO.netlify.app/.netlify/functions/provision \
 - Es **idempotente**: si lo repites no duplica cuentas.
 - Para **reiniciar contraseñas** (vuelven a ser el nombre y piden cambio de nuevo):
   añade `"resetPasswords": true` al cuerpo.
-- **Roman Cano (dorsal 19)** recibe permisos de organizador. Para cambiar quién es
-  organizador, edita `ORG_PLAYER_ID` en `netlify/functions/_lib/players.js`.
+- Reciben permisos de **organizador**: Sergio Acevedo (1), Diego Serrano (2),
+  Julio Lopez (3) y Roman Cano (19). Para cambiar la lista, edita `ORG_PLAYER_IDS`
+  en `netlify/functions/_lib/players.js` y vuelve a lanzar la provisión.
 
 ## 7. Cómo entran los jugadores
 - Usuario = **su nombre** (ej. `Jose Luis`). Contraseña la primera vez = **su nombre**
