@@ -174,6 +174,16 @@ label.fld{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
 .empty{text-align:center;color:var(--mut);padding:30px 10px;font-size:13px}
 .subhead{font-weight:700;font-size:14px;margin:14px 0 8px;color:#e7ecff;padding-left:10px;border-left:3px solid var(--pink);line-height:1.25}
+/* Puerta de autenticación: tapa toda la app hasta que hay sesión */
+.authgate{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:24px;
+  padding-top:calc(var(--safetop) + 24px);overflow:auto;
+  background:radial-gradient(120% 60% at 50% -8%,rgba(237,27,118,.2),transparent 55%),linear-gradient(180deg,#0c1330 0%,#0a0a16 45%,#08080d 100%)}
+.authgate.show{display:flex}
+.authgate .authbox{width:100%;max-width:380px;background:linear-gradient(180deg,#16161f,#101019);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 16px 44px rgba(0,0,0,.6),0 0 0 1px rgba(255,46,142,.12) inset}
+.authgate .sym{text-align:center;letter-spacing:10px;font-size:18px}
+.authgate .sym span:nth-child(1){color:var(--pink2)}.authgate .sym span:nth-child(2){color:var(--teal2)}.authgate .sym span:nth-child(3){color:var(--blue2)}
+.authgate h1{margin:8px 0 10px;text-align:center;font-family:"Audiowide",sans-serif;font-size:22px;font-weight:400;letter-spacing:1px;
+  background:linear-gradient(180deg,#fff,#ffc8e1);-webkit-background-clip:text;background-clip:text;color:transparent}
 </style>
 </head>
 <body>
@@ -205,10 +215,12 @@ label.fld{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
   <button data-t="prons" onclick="go('prons')">Pronósticos</button>
 </div>
 <div class="toast" id="toast"></div>
+<div id="authgate" class="authgate show"><div class="authbox"><div class="sym"><span>○</span> <span>△</span> <span>□</span></div><h1>QUINIELAZO</h1><p class="muted" style="text-align:center">Cargando…</p></div></div>
 
 <script>
 /* ============ CONFIG ============ */
-const PIN="8073";
+/* La autenticación y los permisos de organizador ahora son reales (Firebase Auth
+   + custom claims). Ya no hay PIN en el cliente. ME y ORG se derivan del token. */
 const SHARE=true;
 const SEED_VER="r-2026-06-21-1"; // súbelo si cambian los resultados/partidos de fábrica
 const ROUNDS=[
@@ -404,7 +416,23 @@ async function sset(k,v,sh=SHARE){
   if(!sh){try{localStorage.setItem("q_"+k,val);return true;}catch(e){return false;}}
   await _waitFb(8000);
   FBC[encKey(k)]=val;                                          // optimista: refleja ya el cambio
-  try{if(window.__fbSet){await window.__fbSet(encKey(k),val);return true;}return false;}catch(e){return false;}
+  // Toda escritura pasa por el backend (Netlify), que verifica identidad y permisos
+  // en el servidor. El cliente ya no escribe directo en la base de datos.
+  try{
+    const token=await window.__auth.getToken();
+    if(!token)return false;
+    const r=await fetch("/.netlify/functions/write",{method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
+      body:JSON.stringify({key:k,val})});
+    return r.ok;
+  }catch(e){return false;}
+}
+// El propio usuario limpia su flag de "cambiar contraseña" tras cambiarla.
+async function clearMustChange(){
+  try{const token=await window.__auth.getToken();
+    await fetch("/.netlify/functions/write",{method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
+      body:JSON.stringify({userFlag:"mustChangePassword",val:false})});}catch(e){}
 }
 async function slist(pre,sh=SHARE){
   if(!sh)return [];
@@ -538,8 +566,8 @@ function renderRank(){
 /* ============ PRONÓSTICOS (ver + rellenar unificado) ============ */
 function renderProns(){
   let h='<div class="card"><h2 class="sec">△ Pronósticos</h2>';
-  h+=`<select onchange="ME=+this.value;sset('me',ME,false);renderActive()">${playerOptions(ME)}</select></div>`;
-  if(!ME){h+='<div class="empty">Elige tu nombre para ver y rellenar tus pronósticos.</div>';$("v-prons").innerHTML=h;return;}
+  if(!ME){h+='<div class="empty">No se ha podido identificar tu cuenta.</div><button class="btn ghost" style="margin-top:10px" onclick="doLogout()">Cerrar sesión</button></div>';$("v-prons").innerHTML=h;return;}
+  h+=`<div class="row" style="justify-content:space-between"><div class="muted">Tu sesión: <b style="color:var(--txt)">${esc(byId[ME].name)}</b></div><button class="btn ghost" style="width:auto;padding:8px 12px" onclick="doLogout()">Salir</button></div></div>`;
   const tot=totalScore(ME);
   h+=`<div class="card"><div class="row" style="justify-content:space-between"><div>${dch(byId[ME])} <b>${esc(byId[ME].name)}</b></div><div class="bigpts">${tot.pts} pts</div></div></div>`;
 
@@ -691,17 +719,17 @@ function renderManual(){
   $("v-manual").innerHTML=`<div class="card"><h2 class="sec">≡ Manual de uso</h2>
     <p class="muted">Cómo funciona la plataforma, paso a paso. Para las reglas y la puntuación al detalle, mira <b>Reglas y premios</b> en este mismo menú (<svg class="cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 13.5a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.46V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-1.05-1.46 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.6 1.6 0 0 0 .32-1.77 1.6 1.6 0 0 0-1.46-.97H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.46-1.05 1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.6 1.6 0 0 0 1.77.32H9a1.6 1.6 0 0 0 .97-1.46V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 .97 1.46 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.6 1.6 0 0 0-.32 1.77V9a1.6 1.6 0 0 0 1.46.97H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.46.97z"/></svg>).</p></div>
 
-  <div class="card"><div class="subhead" style="margin-top:0">1 · Empezar a jugar</div>
-    <div class="kvr"><span>Entra en <b>Pronósticos</b> (abajo)</span><b>△</b></div>
-    <div class="kvr"><span>Arriba, elige tu nombre en el desplegable</span><b>quién soy</b></div>
-    <p class="muted">El dispositivo recuerda tu nombre; no hace falta cuenta de nada. Cada jornada y cada ronda es un acordeón: tócalo para abrirlo.</p></div>
+  <div class="card"><div class="subhead" style="margin-top:0">1 · Entrar a tu cuenta</div>
+    <div class="kvr"><span>Entra con <b>tu nombre</b> y tu contraseña</span><b>sesión</b></div>
+    <div class="kvr"><span>La primera vez, tu contraseña es <b>tu propio nombre</b></span><b>cámbiala</b></div>
+    <p class="muted">Al entrar la primera vez te pedimos elegir una contraseña nueva. Tu sesión es solo tuya: nadie más puede pronosticar por ti. Cada jornada y cada ronda es un acordeón: tócalo para abrirlo.</p></div>
 
   <div class="card"><div class="subhead" style="margin-top:0">2 · Jornadas (fase de grupos)</div>
     <div class="kvr"><span><span class="st st-edit">ABIERTA</span> antes de la hora de cierre</span><b>editable</b></div>
     <div class="kvr"><span>Marca <b>1 / X / 2</b> en cada partido y pulsa <b>Guardar mi quiniela</b></span><b></b></div>
     <div class="kvr"><span>Partidos ★ (España y el de la jornada): marcador <b>exacto</b></span><b>5/3/1</b></div>
     <div class="kvr"><span><span class="st st-lock">CERRADA</span> tras la hora de cierre</span><b>solo lectura</b></div>
-    <p class="muted">Cuando cierra, ya no se puede tocar. A partir de ahí verás tus aciertos y tus puntos, que se actualizan solos según el organizador mete resultados.</p></div>
+    <p class="muted">Cuando cierra, ya no se puede tocar. A partir de ahí verás tus aciertos y tus puntos, que se actualizan solos en cuanto entran los resultados (llegan automáticamente).</p></div>
 
   <div class="card"><div class="subhead" style="margin-top:0">3 · Fase eliminatoria</div>
     <p class="muted">Cuando el organizador active el cuadro, aparecerán las rondas (Dieciseisavos → Final) como acordeones dentro de Pronósticos. En cada cruce, pulsa el equipo que crees que <b>pasa</b>. Si cambias un cruce anterior, los siguientes que dependían se reinician.</p>
@@ -714,13 +742,10 @@ function renderManual(){
     <p class="muted">La pestaña <b>Ranking</b> muestra la clasificación en vivo, el podio y el mejor de cada jornada (premio de 10€). Se actualiza solo en cuanto entran resultados.</p></div>
 
   <div class="card"><div class="subhead" style="margin-top:0">6 · Organizador (<svg class="tri" viewBox="0 0 24 24"><path d="M12 4 L20.7 19 L3.3 19 Z"/></svg>)</div>
-    <p class="muted">Protegido por PIN. Desde ahí se gestiona todo:</p>
-    <div class="kvr"><span><b>Resultados</b> de cada jornada</span><b>1/x/2 o marcador</b></div>
-    <div class="kvr"><span><b>Crear o editar jornada</b> (partidos, ★ exacto, hora de cierre)</span><b></b></div>
-    <div class="kvr"><span><b>Cuadro</b>: pegar los cruces de la 1ª ronda y su cierre</span><b></b></div>
-    <div class="kvr"><span><b>Resultados reales</b> de la eliminatoria y de la final</span><b></b></div>
+    <p class="muted">Solo para el organizador (cuenta con permisos). Los <b>partidos, los cruces de eliminatoria y los resultados llegan automáticamente</b> desde la API del Mundial; el organizador solo afina lo que la API no decide:</p>
+    <div class="kvr"><span><b>Partido de la jornada</b> y horas de cierre</span><b>manual</b></div>
     <div class="kvr"><span><b>Premios individuales</b>: resultados y completar el de un jugador</span><b></b></div>
-    <p class="muted">El ranking y los puntos de todos se recalculan automáticamente al guardar.</p></div>`;
+    <p class="muted">El ranking y los puntos de todos se recalculan automáticamente.</p></div>`;
 }
 
 /* ============ REGLAS ============ */
@@ -754,9 +779,7 @@ function renderRules(){
 const TRI='<svg class="tri" viewBox="0 0 24 24"><path d="M12 4 L20.7 19 L3.3 19 Z"/></svg>';
 function renderOrg(){
   if(!ORG){$("v-org").innerHTML=`<div class="card"><h2 class="sec">${TRI} Organizador</h2>
-    <label class="fld">PIN</label><input id="pin" type="password" inputmode="numeric" placeholder="••••">
-    <button class="btn" style="margin-top:10px" onclick="checkPin()">Entrar</button>
-    <p class="muted">Solo para organizadores.</p></div>`;return;}
+    <p class="muted">Esta sección es solo para el organizador. Tu cuenta no tiene permisos de organizador.</p></div>`;return;}
   let h='<div class="card"><h2 class="sec">'+TRI+' Organizador</h2><p class="muted">Mete resultados, gestiona jornadas, el cuadro y los premios individuales. El ranking se actualiza solo.</p></div>';
   h+='<div class="card"><div class="subhead" style="margin-top:0">Resultados</div>';
   ST.jornadas.slice().reverse().forEach((j,ri)=>{
@@ -810,11 +833,10 @@ function renderOrg(){
   h+=`<select id="sbpsel" onchange="loadOrgSide()"><option value="">— elige jugador —</option>${sortedPlayers().map(p=>`<option value="${p.id}">#${pad(p.dorsal)} · ${esc(p.name)}</option>`).join("")}</select>`;
   SIDE.forEach(([k,lbl])=>{h+=`<label class="fld">${lbl}</label><input data-osb="${k}" value="">`;});
   h+='<button class="btn" style="margin-top:12px" onclick="saveOrgSide()">Guardar premios del jugador</button></div>';
-  h+='<button class="btn ghost" onclick="ORG=false;renderActive()">Salir del modo organizador</button>';
+  h+='<button class="btn ghost" onclick="go(\'rank\')">Volver al ranking</button>';
   $("v-org").innerHTML=h;
   brHint();
 }
-function checkPin(){if($("pin").value===PIN){ORG=true;renderActive();}else toast("PIN incorrecto");}
 function loadJEdit(){const v=$("jedit").value,del=$("jdelbtn"),btn=$("jsavebtn");
   if(v==="__new"){$("jname").value="";$("jclave").value="";$("jclave").disabled=false;$("jmatches").value="";$("jclose").value="";del.style.display="none";btn.textContent="Crear jornada";$("exactbox").innerHTML="";return;}
   const j=ST.jornadas.find(x=>x.clave===v);if(!j)return;
@@ -881,21 +903,80 @@ async function saveOrgSide(){const id=+$("sbpsel").value;if(!id){toast("Elige un
   const ok=await savePlayer(id);toast(ok?"✓ Premios del jugador guardados":"▲ Error al guardar");}
 
 /* ============ INIT ============ */
+let BOOTED=false;
 async function init(){
-  ME=await sget("me",false);ME=ME?+ME:null;
   await loadAll();renderActive();
   // El refresco en vivo lo dispara el listener onValue de Firebase (window.__fbApplySnapshot).
-  // Ya no hace falta el setInterval de 6s.
 }
-init();
+
+/* ============ AUTENTICACIÓN (sesión real por jugador) ============ */
+// El módulo de Firebase (más abajo) llama a estos callbacks según el estado de sesión.
+window.__onSignedIn=async function(info){
+  ME=info.playerId!=null?+info.playerId:null;
+  ORG=!!info.org;
+  if(info.mustChange){showChangePw();return;}   // primer acceso: forzar cambio de contraseña
+  hideAuthGate();
+  if(!BOOTED){BOOTED=true;window.__attachData();}// engancha el listener en vivo (lectura requiere sesión)
+  await init();
+};
+window.__onSignedOut=function(){ME=null;ORG=false;BOOTED=false;showLogin();};
+
+function authGate(){return $("authgate");}
+function showAuthGate(html){const g=authGate();g.innerHTML=html;g.classList.add("show");}
+function hideAuthGate(){authGate().classList.remove("show");}
+function showLogin(){
+  showAuthGate(`<div class="authbox">
+    <div class="sym"><span>○</span> <span>△</span> <span>□</span></div>
+    <h1>QUINIELAZO</h1>
+    <p class="muted" style="text-align:center;margin:0 0 14px">Entra con tu nombre y tu contraseña</p>
+    <label class="fld">Tu nombre</label><input id="loginname" autocomplete="username" placeholder="Ej. Jose Luis">
+    <label class="fld">Contraseña</label><input id="loginpw" type="password" autocomplete="current-password" placeholder="••••••">
+    <button class="btn" style="margin-top:14px" onclick="doLogin()">Entrar</button>
+    <p class="muted" style="margin-top:12px">La primera vez tu contraseña es tu propio nombre; al entrar te pediremos cambiarla.</p>
+  </div>`);
+  setTimeout(()=>{const i=$("loginpw");if(i)i.addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});},0);
+}
+function showChangePw(){
+  showAuthGate(`<div class="authbox">
+    <div class="sym"><span>○</span> <span>△</span> <span>□</span></div>
+    <h1>NUEVA CONTRASEÑA</h1>
+    <p class="muted" style="text-align:center;margin:0 0 14px">Por seguridad, elige tu propia contraseña.</p>
+    <label class="fld">Nueva contraseña (mín. 6)</label><input id="cpw1" type="password" autocomplete="new-password" placeholder="••••••">
+    <label class="fld">Repítela</label><input id="cpw2" type="password" autocomplete="new-password" placeholder="••••••">
+    <button class="btn" style="margin-top:14px" onclick="doChangePw()">Guardar y entrar</button>
+    <button class="btn ghost" style="margin-top:8px" onclick="doLogout()">Cancelar</button>
+  </div>`);
+}
+async function doLogin(){
+  const name=($("loginname").value||"").trim(),pass=$("loginpw").value||"";
+  if(!name||!pass){toast("Pon tu nombre y tu contraseña");return;}
+  try{await window.__auth.signIn(name,pass);}        // onAuthStateChanged disparará __onSignedIn
+  catch(e){toast("Nombre o contraseña incorrectos");}
+}
+async function doChangePw(){
+  const p1=$("cpw1").value||"",p2=$("cpw2").value||"";
+  if(p1.length<6){toast("Mínimo 6 caracteres");return;}
+  if(p1!==p2){toast("Las contraseñas no coinciden");return;}
+  try{
+    await window.__auth.changePassword(p1);
+    await clearMustChange();
+    toast("✓ Contraseña actualizada");
+    hideAuthGate();
+    if(!BOOTED){BOOTED=true;window.__attachData();}
+    await init();
+  }catch(e){toast("No se pudo cambiar: vuelve a entrar e inténtalo");}
+}
+async function doLogout(){try{await window.__auth.signOut();}catch(e){}}
 </script>
 
-<!-- ============ FIREBASE (CDN, SDK modular v10) ============ -->
+<!-- ============ FIREBASE (CDN, SDK modular v10): Auth + Realtime Database ============ -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getDatabase, ref, onValue, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, updatePassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-// <-- TU firebaseConfig (no es secreto: va en el navegador). Cámbialo aquí si recreas el proyecto.
+// firebaseConfig (no es secreto: va en el navegador). La seguridad real está en
+// las reglas RTDB (solo lectura autenticada; escritura solo desde el servidor).
 const firebaseConfig = {
   apiKey: "AIzaSyA2wqNEy5X07D5ME7s5D9bHCi2BsArmoeE",
   authDomain: "quinielazo-mundialista.firebaseapp.com",
@@ -908,13 +989,32 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
+const auth = getAuth(app);
 
-// Escritura de una clave compartida bajo /quiniela/<clave>
-window.__fbSet = (key, val) => set(ref(db, "quiniela/" + key), val);
+// Mismo criterio de normalización que el servidor (_lib/players.js): el jugador
+// escribe su nombre y aquí lo convertimos al email sintético de su cuenta.
+const normalizeName = n => String(n).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+const synthEmail = n => normalizeName(n) + "@quinielazo.local";
 
-// Listener en vivo del nodo raíz: cada cambio actualiza el cache y repinta.
-onValue(ref(db, "quiniela"), (snap) => {
+window.__auth = {
+  signIn: (name, pass) => signInWithEmailAndPassword(auth, synthEmail(name), pass),
+  signOut: () => signOut(auth),
+  changePassword: (pass) => updatePassword(auth.currentUser, pass),
+  getToken: async () => auth.currentUser ? await auth.currentUser.getIdToken() : null,
+};
+
+// Listener en vivo del nodo raíz (la lectura requiere sesión iniciada).
+window.__attachData = () => onValue(ref(db, "quiniela"), (snap) => {
   if (window.__fbApplySnapshot) window.__fbApplySnapshot(snap.val());
+});
+
+// Estado de sesión: arranca la app (con claims playerId/org) o muestra el login.
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { if (window.__onSignedOut) window.__onSignedOut(); return; }
+  const tr = await user.getIdTokenResult(true);   // refresca para traer los custom claims
+  let mustChange = false;
+  try { const s = await get(ref(db, "users/" + user.uid + "/mustChangePassword")); mustChange = s.val() === true; } catch (e) {}
+  if (window.__onSignedIn) window.__onSignedIn({ uid: user.uid, playerId: tr.claims.playerId, org: !!tr.claims.org, mustChange });
 });
 </script>
 </body>

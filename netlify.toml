@@ -2,3 +2,15 @@
   # Sitio estático de un solo index.html: nada que compilar, se publica la raíz.
   publish = "."
   command = ""
+
+[functions]
+  # Backend mínimo: sesiones, escritura autorizada y sync deportivo.
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  # firebase-admin usa requires dinámicos; se incluye sin empaquetar para evitar fallos.
+  external_node_modules = ["firebase-admin"]
+
+[functions."sync"]
+  # Sincronización automática con API-Football (fixtures + cruces + resultados).
+  # Una llamada por ejecución; ~24/día, muy por debajo del límite gratuito (100/día).
+  schedule = "@hourly"

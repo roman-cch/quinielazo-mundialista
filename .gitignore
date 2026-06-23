@@ -1,6 +1,11 @@
 node_modules/
-package.json
-package-lock.json
 shots/
 *.mjs
 reglamento.txt
+
+# Secretos: nunca subir credenciales de servicio ni .env
+.env
+*serviceAccount*.json
+*firebase-adminsdk*.json
+*-adminsdk-*.json
+.netlify/
