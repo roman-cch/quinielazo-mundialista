@@ -127,6 +127,7 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--pink);bo
 .rkrow:last-child{border:0}
 .rkpos{width:24px;text-align:center;font-weight:800;color:var(--mut);position:relative}
 .rkpos .tie{font-size:9px;color:var(--teal2);vertical-align:super;margin-left:1px}
+.rkpos .tb{font-size:13px;line-height:0;color:var(--gold);vertical-align:super;margin-left:1px;opacity:.7}
 .rknm{flex:1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rkpt{font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums;text-shadow:0 0 9px rgba(244,194,13,.4)}
 .tag10{background:#3a2a05;color:var(--gold);border:1px solid #f4c20d55;border-radius:8px;font-size:10px;padding:2px 6px;font-weight:700}
@@ -622,16 +623,23 @@ function renderRank(){
   // puntos de fase final (los criterios de desempate del reglamento §7); en una vista
   // de jornada, basta con los mismos puntos.
   const tieKey=p=>total?(p.pts+"|"+(p.exact||0)+"|"+(p.finalp||0)):String(p.pts);
-  let prevKey=null,prevPos=0;
+  // Conteo por puntuación total: si alguien tiene los mismos puntos que otro pero
+  // NO empata (distinto escalón), su puesto se decidió por desempate (reglamento §7).
+  const ptsCount={};r.forEach(p=>{ptsCount[p.pts]=(ptsCount[p.pts]||0)+1;});
+  let prevKey=null,prevPos=0,anyTb=false;
   r.forEach((p,i)=>{
     const k=tieKey(p);
     const samePrev=(i>0&&k===prevKey);
     const pos=samePrev?prevPos:i+1;
     const sameNext=(i<r.length-1&&tieKey(r[i+1])===k);
     const tied=samePrev||sameNext;
-    h+=`<div class="rkrow"><div class="rkpos">${pos}${tied?'<span class="tie">=</span>':''}</div>${dch(p)}<div class="rknm">${esc(p.name)}</div><div class="rkpt">${p.pts}</div></div>`;
+    const tiebroken=total&&!tied&&ptsCount[p.pts]>1; // mismos puntos que otro, pero desempatado
+    if(tiebroken)anyTb=true;
+    const mark=tied?'<span class="tie">=</span>':(tiebroken?'<span class="tb" title="Mismos puntos que otros jugadores; el reglamento §7 desempata por más resultados exactos.">·</span>':'');
+    h+=`<div class="rkrow"><div class="rkpos">${pos}${mark}</div>${dch(p)}<div class="rknm">${esc(p.name)}</div><div class="rkpt">${p.pts}</div></div>`;
     prevKey=k;prevPos=pos;
   });
+  if(total&&anyTb)h+='<p class="muted" style="font-size:11px;margin:8px 2px 0;line-height:1.45"><b style="color:var(--gold)">·</b> Mismos puntos que otro jugador, pero por delante por desempate del reglamento (§7): <b>más resultados exactos</b>.</p>';
   h+='</div>';
   // El "mejor de la jornada · 10€" solo en la vista Total (premios de grupos).
   if(total){
