@@ -719,6 +719,33 @@ function renderProns(){
     h+=`<div class="kvr"><span>${lbl}</span><span>${esc(mine||"—")} ${chip}</span></div>`;});
   h+='</div></div>';
 
+  /* --- Transparencia: pronósticos del resto (solo de jornadas ya empezadas) --- */
+  h+='<div class="subhead">○ Pronósticos de los demás</div>';
+  const closedJs=ST.jornadas.filter(j=>j.closeTime&&new Date(j.closeTime)<new Date());
+  if(!closedJs.length){
+    h+='<div class="notice">En cuanto empiece una jornada (su primer partido) verás aquí los pronósticos de todos los jugadores. Hasta entonces se mantienen ocultos.</div>';
+  }else{
+    h+='<p class="muted" style="margin:0 0 8px">Solo se muestran las jornadas que ya han empezado. Toca un jugador para ver sus pronósticos.</p>';
+    sortedPlayers().forEach(p=>{
+      const o=openAcc["tp"+p.id]!==undefined?openAcc["tp"+p.id]:false;
+      const totp=closedJs.reduce((acc,j)=>acc+jornadaScore(p.id,j).pts,0);
+      const meY=p.id===ME?' <span class="chip wait">tú</span>':'';
+      h+=`<div class="acc ${o?"open":""}"><div class="h" onclick="tacc('tp${p.id}')"><div><span class="t">${dch(p)} ${esc(p.name)}${meY}</span> <span class="meta">${totp} pts</span></div><span class="chev">▾</span></div><div class="b">`;
+      closedJs.forEach(j=>{
+        h+=`<div class="rndlbl">${esc(j.name)}</div>`;
+        j.matches.forEach((m,idx)=>{
+          const pred=getPick(p.id,j.clave,idx);let chip='';
+          if(m.result){
+            if(m.exact){const e=exactPts(pred,m.result,false);chip=e>0?`<span class="chip ok">✓ ${e}</span>`:'<span class="chip no">✗</span>';}
+            else{const ok=signOf(pred)&&signOf(pred)===signOf(m.result);chip=ok?'<span class="chip ok">✓ 1</span>':'<span class="chip no">✗</span>';}
+          }
+          h+=`<div class="kvr"><span><b style="color:var(--pink2)">${esc(m.group)}</b> ${esc(m.home)} - ${esc(m.away)} ${m.exact?'<span style="color:var(--gold)">★</span>':''}</span><span><b>${esc((pred||"—").toUpperCase())}</b> ${chip}</span></div>`;
+        });
+      });
+      h+='</div></div>';
+    });
+  }
+
   $("v-prons").innerHTML=h;
 }
 
@@ -905,8 +932,36 @@ function renderOrg(){
   h+=`<select id="sbpsel" onchange="loadOrgSide()"><option value="">— elige jugador —</option>${sortedPlayers().map(p=>`<option value="${p.id}">#${pad(p.dorsal)} · ${esc(p.name)}</option>`).join("")}</select>`;
   SIDE.forEach(([k,lbl])=>{h+=`<label class="fld">${lbl}</label><input data-osb="${k}" value="">`;});
   h+='<button class="btn" style="margin-top:12px" onclick="saveOrgSide()">Guardar premios del jugador</button></div>';
+  h+=`<div class="card"><div class="subhead" style="margin-top:0">Exportar pronósticos a Excel</div>
+    <p class="muted">Descarga un CSV (se abre en Excel o en Google Sheets/Drive) con <b>todos los partidos ordenados por grupos</b> en las filas y <b>cada jugador</b> en una columna con su pronóstico.</p>
+    <button class="btn" onclick="downloadCSV()">⬇ Descargar pronósticos (CSV)</button></div>`;
   h+='<button class="btn ghost" onclick="go(\'rank\')">Volver al ranking</button>';
   $("v-org").innerHTML=h;
+}
+// Exporta todos los pronósticos a CSV: filas = partidos por grupo, columnas = jugadores.
+// Separador ';' + BOM UTF-8 para que Excel (es) reparta columnas y respete los acentos.
+function downloadCSV(){
+  const SEP=";";
+  const cell=v=>{v=(v==null?"":String(v));return /[";\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+  const players=sortedPlayers();
+  const recs=[];
+  ST.jornadas.forEach(j=>j.matches.forEach((m,idx)=>recs.push({g:(m.group||"").replace(/\d+$/,""),clave:j.clave,idx,m})));
+  recs.sort((a,b)=>a.g.localeCompare(b.g)||a.clave.localeCompare(b.clave)||a.idx-b.idx);
+  const rows=[["Grupo","Jornada","Partido","Resultado",...players.map(p=>p.name)]];
+  recs.forEach(r=>{
+    const m=r.m;
+    const line=[r.g,r.clave,m.home+" - "+m.away+(m.exact?" ★":""),m.result||""];
+    players.forEach(p=>line.push((getPick(p.id,r.clave,r.idx)||"").toUpperCase()));
+    rows.push(line);
+  });
+  const csv="﻿"+rows.map(r=>r.map(cell).join(SEP)).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download="quiniela_pronosticos_"+new Date().toISOString().slice(0,10)+".csv";
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  toast("✓ CSV descargado");
 }
 function isSpain(m){return /españa/i.test(m.home)||/españa/i.test(m.away);}
 // Elegir/desmarcar el partido de la jornada (solo uno; España siempre exacto).
