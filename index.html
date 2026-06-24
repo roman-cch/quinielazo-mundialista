@@ -732,7 +732,9 @@ function renderProns(){
       const meY=p.id===ME?' <span class="chip wait">tú</span>':'';
       h+=`<div class="acc ${o?"open":""}"><div class="h" onclick="tacc('tp${p.id}')"><div><span class="t">${dch(p)} ${esc(p.name)}${meY}</span> <span class="meta">${totp} pts</span></div><span class="chev">▾</span></div><div class="b">`;
       closedJs.forEach(j=>{
-        h+=`<div class="rndlbl">${esc(j.name)}</div>`;
+        const oj=openAcc["tpj"+p.id+"_"+j.clave]!==undefined?openAcc["tpj"+p.id+"_"+j.clave]:false;
+        const sj=jornadaScore(p.id,j).pts;
+        h+=`<div class="acc ${oj?"open":""}"><div class="h" onclick="event.stopPropagation();tacc('tpj${p.id}_${j.clave}')"><div><span class="t">${esc(j.name)}</span> <span class="meta">${sj} pts</span></div><span class="chev">▾</span></div><div class="b">`;
         j.matches.forEach((m,idx)=>{
           const pred=getPick(p.id,j.clave,idx);let chip='';
           if(m.result){
@@ -741,6 +743,7 @@ function renderProns(){
           }
           h+=`<div class="kvr"><span><b style="color:var(--pink2)">${esc(m.group)}</b> ${esc(m.home)} - ${esc(m.away)} ${m.exact?'<span style="color:var(--gold)">★</span>':''}</span><span><b>${esc((pred||"—").toUpperCase())}</b> ${chip}</span></div>`;
         });
+        h+='</div></div>';
       });
       h+='</div></div>';
     });
