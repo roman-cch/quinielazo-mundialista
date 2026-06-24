@@ -936,35 +936,43 @@ function renderOrg(){
   SIDE.forEach(([k,lbl])=>{h+=`<label class="fld">${lbl}</label><input data-osb="${k}" value="">`;});
   h+='<button class="btn" style="margin-top:12px" onclick="saveOrgSide()">Guardar premios del jugador</button></div>';
   h+=`<div class="card"><div class="subhead" style="margin-top:0">Exportar pronósticos a Excel</div>
-    <p class="muted">Descarga un CSV (se abre en Excel o en Google Sheets/Drive) con <b>todos los partidos ordenados por grupos</b> en las filas y <b>cada jugador</b> en una columna con su pronóstico.</p>
-    <button class="btn" onclick="downloadCSV()">⬇ Descargar pronósticos (CSV)</button></div>`;
+    <p class="muted">Elige una jornada y descarga su CSV (se abre en Excel o en Google Sheets/Drive): <b>partidos por grupo</b> en las filas y <b>cada jugador</b> en una columna con su pronóstico. Puedes descargarla <b>en cualquier momento</b>, esté abierta o cerrada.</p>
+    <div style="display:flex;gap:8px;align-items:center">
+      <select id="csvjor" style="flex:1">${ST.jornadas.map(j=>`<option value="${j.clave}">${esc(j.name)}</option>`).join("")}</select>
+      <button class="btn" style="width:auto;white-space:nowrap;margin:0" onclick="downloadCSV()">⬇ Descargar CSV</button>
+    </div></div>`;
   h+='<button class="btn ghost" onclick="go(\'rank\')">Volver al ranking</button>';
   $("v-org").innerHTML=h;
 }
-// Exporta todos los pronósticos a CSV: filas = partidos por grupo, columnas = jugadores.
-// Separador ';' + BOM UTF-8 para que Excel (es) reparta columnas y respete los acentos.
+// Exporta a CSV los pronósticos de UNA jornada (la elegida en el selector):
+// filas = partidos por grupo, columnas = jugadores. Descargable en cualquier
+// momento (esté abierta o cerrada), pensado para que el organizador contraste.
+// Separador ';' + BOM UTF-8 para que Excel (es) reparta columnas y respete acentos.
 function downloadCSV(){
+  const sel=$("csvjor");const clave=sel?sel.value:(ST.jornadas[0]&&ST.jornadas[0].clave);
+  const j=ST.jornadas.find(x=>x.clave===clave);if(!j){toast("Elige una jornada");return;}
   const SEP=";";
   const cell=v=>{v=(v==null?"":String(v));return /[";\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
   const players=sortedPlayers();
-  const recs=[];
-  ST.jornadas.forEach(j=>j.matches.forEach((m,idx)=>recs.push({g:(m.group||"").replace(/\d+$/,""),clave:j.clave,idx,m})));
-  recs.sort((a,b)=>a.g.localeCompare(b.g)||a.clave.localeCompare(b.clave)||a.idx-b.idx);
-  const rows=[["Grupo","Jornada","Partido","Resultado",...players.map(p=>p.name)]];
+  const recs=j.matches.map((m,idx)=>({g:(m.group||"").replace(/\d+$/,""),idx,m}));
+  recs.sort((a,b)=>a.g.localeCompare(b.g)||a.idx-b.idx);
+  const rows=[["Grupo","Partido","Resultado",...players.map(p=>p.name)]];
   recs.forEach(r=>{
     const m=r.m;
-    const line=[r.g,r.clave,m.home+" - "+m.away+(m.exact?" ★":""),m.result||""];
-    players.forEach(p=>line.push((getPick(p.id,r.clave,r.idx)||"").toUpperCase()));
+    const line=[r.g,m.home+" - "+m.away+(m.exact?" ★":""),m.result||""];
+    players.forEach(p=>line.push((getPick(p.id,clave,r.idx)||"").toUpperCase()));
     rows.push(line);
   });
   const csv="﻿"+rows.map(r=>r.map(cell).join(SEP)).join("\r\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
   const url=URL.createObjectURL(blob);
+  const d=new Date(),p2=n=>String(n).padStart(2,"0");
+  const stamp=`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}_${p2(d.getHours())}-${p2(d.getMinutes())}`;
   const a=document.createElement("a");
-  a.href=url;a.download="quiniela_pronosticos_"+new Date().toISOString().slice(0,10)+".csv";
+  a.href=url;a.download="quinielazo_"+j.name.replace(/\s+/g,"-")+"_"+stamp+".csv";
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
-  toast("✓ CSV descargado");
+  toast("✓ CSV de "+j.name+" descargado");
 }
 function isSpain(m){return /españa/i.test(m.home)||/españa/i.test(m.away);}
 // Elegir/desmarcar el partido de la jornada (solo uno; España siempre exacto).
