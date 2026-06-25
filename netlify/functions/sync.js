@@ -72,40 +72,50 @@ exports.handler = async () => {
 
   const jornadas = Object.keys(byClave).sort().map((clave) => {
     const prev = prevByClave[clave] || {};
-    const prevMatchByKey = {};
-    (prev.matches || []).forEach((m) => { prevMatchByKey[m.home + "|" + m.away] = m; });
-    const syncedByKey = {};
-    byClave[clave].matches.forEach((m) => { syncedByKey[m.home + "|" + m.away] = m; });
+    // Clave por PAR de equipos (ordenada): da igual quién sea local/visitante. La API
+    // a veces invierte el local/visitante respecto al orden de fábrica; emparejar por la
+    // cadena "local|visitante" fallaba y descuadraba todo el orden (los pronósticos se
+    // guardan por posición). Con el par normalizado eso ya no ocurre.
+    const pkey = (h, a) => [String(h).trim(), String(a).trim()].sort().join("|");
+    const prevByPair = {};
+    (prev.matches || []).forEach((m) => { prevByPair[pkey(m.home, m.away)] = m; });
+    const syncedByPair = {};
+    byClave[clave].matches.forEach((m) => { syncedByPair[pkey(m.home, m.away)] = m; });
 
-    const build = (m) => {
-      const pm = prevMatchByKey[m.home + "|" + m.away] || {};
+    // Combina el partido previo (orden, local/visitante, "partido de la jornada") con lo
+    // que trae el sync (resultado). De un partido YA guardado nunca se cambia ni la
+    // posición ni el local/visitante: el 1/2 depende de quién sea local; solo el resultado.
+    const build = (pm, sm) => {
+      const ref = pm || sm;
       return {
-        group: m.group || pm.group || "",
-        home: m.home,
-        away: m.away,
-        // España siempre exacto; conserva el "partido de la jornada" elegido por el organizador.
-        exact: isSpain(m) || !!pm.exact,
-        tag: isSpain(m) ? "espana" : (pm.tag || ""),
-        result: m.result || pm.result || "",
+        group: (pm && pm.group) || (sm && sm.group) || "",
+        home: pm && pm.home != null ? pm.home : sm.home,
+        away: pm && pm.away != null ? pm.away : sm.away,
+        exact: isSpain(ref) || !!(pm && pm.exact),
+        tag: isSpain(ref) ? "espana" : ((pm && pm.tag) || ""),
+        result: (sm && sm.result) || (pm && pm.result) || "",
       };
     };
 
-    // IMPORTANTE: los pronósticos se guardan por POSICIÓN. Hay que mantener el orden
-    // canónico (de fábrica); NUNCA reordenar por fecha o se descuadra la puntuación.
+    // IMPORTANTE: los pronósticos se guardan por POSICIÓN. NUNCA reordenar.
     let ms;
-    const canon = ORDER[clave];
-    if (canon) {
+    if (prev.matches && prev.matches.length) {
+      // Ya hay jornada guardada: se CONSERVA su orden y su local/visitante; solo se
+      // actualizan resultados y se añaden partidos nuevos al final (no esperable en grupos).
       const used = new Set();
-      ms = [];
-      canon.forEach(([h, a]) => {
-        const key = h + "|" + a;
-        if (syncedByKey[key]) { ms.push(build(syncedByKey[key])); used.add(key); }
-        else if (prevMatchByKey[key]) { ms.push(build({ home: h, away: a })); used.add(key); }
-      });
-      // partidos sincronizados que no estén en el orden canónico (no debería pasar en grupos), al final
-      byClave[clave].matches.forEach((m) => { const k = m.home + "|" + m.away; if (!used.has(k)) ms.push(build(m)); });
+      ms = prev.matches.map((pm) => { const k = pkey(pm.home, pm.away); used.add(k); return build(pm, syncedByPair[k]); });
+      byClave[clave].matches.forEach((sm) => { const k = pkey(sm.home, sm.away); if (!used.has(k)) ms.push(build(null, sm)); });
     } else {
-      ms = byClave[clave].matches.sort((a, b) => new Date(a._date) - new Date(b._date)).map(build);
+      // Primera vez (sin datos previos): orden canónico de fábrica, emparejando por par.
+      const canon = ORDER[clave];
+      if (canon) {
+        const used = new Set();
+        ms = [];
+        canon.forEach(([h, a]) => { const k = pkey(h, a); if (syncedByPair[k]) { ms.push(build(null, syncedByPair[k])); used.add(k); } });
+        byClave[clave].matches.forEach((sm) => { const k = pkey(sm.home, sm.away); if (!used.has(k)) ms.push(build(null, sm)); });
+      } else {
+        ms = byClave[clave].matches.sort((a, b) => new Date(a._date) - new Date(b._date)).map((sm) => build(null, sm));
+      }
     }
 
     // Cierre automático = inicio del primer partido de la jornada

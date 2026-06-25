@@ -459,7 +459,7 @@ async function slist(pre,sh=SHARE){
 function pj(v,d){if(v==null)return d;try{return JSON.parse(v)}catch(e){return d}}
 
 let ST={jornadas:[],bracket:null,sidebet:null,pdata:{}};
-let ME=null, ORG=false, openAcc={}, CURTAB="rank", RANKVIEW="total";
+let ME=null, MYID=null, ORG=false, openAcc={}, CURTAB="rank", RANKVIEW="total";
 
 async function loadAll(){
   let j=pj(await sget("jornadas"),null);
@@ -789,7 +789,11 @@ function setPk(btn){btn.closest(".picks").querySelectorAll(".pk").forEach(b=>b.c
 async function saveFill(clave,btn){
   const jx=ST.jornadas.find(x=>x.clave===clave);
   if(jx&&jx.closeTime&&new Date(jx.closeTime)<new Date()){toast("Jornada cerrada: ya no se puede guardar");renderActive();return;}
-  const body=btn.closest(".b");const pd=pdataOf(ME);pd.preds=pd.preds||{};const cur=pd.preds[clave]||{};
+  // Aviso si se rellena la quiniela de OTRO jugador (solo el organizador puede): evita
+  // guardar en la columna equivocada por dejar el selector en otro nombre.
+  if(ME!==MYID&&!confirm("Vas a guardar la quiniela de #"+pad(byId[ME].dorsal)+" "+byId[ME].name+", que no es tu cuenta. ¿Continuar?"))return;
+  // REEMPLAZA la jornada entera (no fusiona): lo que se ve en el formulario es lo que se guarda.
+  const body=btn.closest(".b");const pd=pdataOf(ME);pd.preds=pd.preds||{};const cur={};
   body.querySelectorAll(".match").forEach((mt,i)=>{
     const picks=mt.querySelector(".picks");
     if(picks){const on=picks.querySelector(".pk.on");if(on)cur[i]=on.textContent.trim().toLowerCase();}
@@ -1014,7 +1018,8 @@ async function init(){
 /* ============ AUTENTICACIÓN (sesión real por jugador) ============ */
 // El módulo de Firebase (más abajo) llama a estos callbacks según el estado de sesión.
 window.__onSignedIn=async function(info){
-  ME=info.playerId!=null?+info.playerId:null;
+  MYID=info.playerId!=null?+info.playerId:null;
+  ME=MYID;                                       // tu cuenta; el organizador puede cambiarla en el selector
   ORG=!!info.org;
   if(info.mustChange){showChangePw();return;}   // primer acceso: forzar cambio de contraseña
   hideAuthGate();
