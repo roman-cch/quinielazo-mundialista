@@ -521,7 +521,12 @@ function jornadaScore(id,j){
   });
   return {pts,exact};
 }
-function startIdx(){const n=(ST.bracket&&ST.bracket.r16&&ST.bracket.r16.length)||16;let s=ROUNDS.findIndex(r=>r.size<=n);return s<0?0:s;}
+// La eliminatoria SIEMPRE arranca en Dieciseisavos (ronda 0): el cuadro completo se
+// muestra desde el principio y los cruces sin equipo aún salen como "por definir".
+function startIdx(){return 0;}
+// Cruces de la primera ronda (Dieciseisavos) rellenados a su tamaño completo (16),
+// usando los que ya se conocen (b.r16) y dejando el resto vacíos ("por definir").
+function firstRoundPairs(){const b=ST.bracket,n=ROUNDS[startIdx()].size,out=[];for(let i=0;i<n;i++){const c=(b.r16||[])[i];out.push([(c&&c.a)||"",(c&&c.b)||""]);}return out;}
 function bracketScore(id){
   const b=ST.bracket;if(!b.r16.length)return {pts:0};
   const pd=ST.pdata[id];if(!pd||!pd.bracket)return {pts:0};
@@ -557,7 +562,7 @@ function bracketReady(){return !!(ST.bracket&&ST.bracket.r16&&ST.bracket.r16.som
 // reales (b.real.w) de la ronda anterior, que el organizador va rellenando.
 function koMatchups(r){
   const b=ST.bracket,s=startIdx();
-  if(r===s)return b.r16.map(c=>[c.a||"",c.b||""]);
+  if(r===s)return firstRoundPairs();
   const prevW=(b.real&&b.real.w&&b.real.w[r-1])||{};const out=[];
   for(let i=0;i<ROUNDS[r].size;i++)out.push([prevW[2*i]||"",prevW[2*i+1]||""]);
   return out;
@@ -749,8 +754,9 @@ function renderProns(){
     const brClosed=b.closeTime&&new Date(b.closeTime)<new Date();
     const pd=pdataOf(ME);pd.bracket=pd.bracket||{picks:{},bonus:""};const pk=pd.bracket.picks;
     const st=startIdx();const act=ROUNDS.slice(st);
-    // Cuadro proyectado del jugador: 1ª ronda = sorteo; siguientes = sus ganadores elegidos.
-    let rounds=[b.r16.map(x=>[x.a||"",x.b||""])];
+    // Cuadro proyectado del jugador: 1ª ronda = sorteo (16 cruces, "por definir" los que
+    // aún no se conocen); siguientes = sus ganadores elegidos.
+    let rounds=[firstRoundPairs()];
     for(let li=0;li<act.length-1;li++){const prev=rounds[li];const w=[];
       for(let i=0;i<prev.length;i++){let sel=(pk[st+li]||{})[i];if(sel&&prev[i].indexOf(sel)<0)sel="";w.push(sel||"");}
       const nx=[];for(let i=0;i<w.length;i+=2)nx.push([w[i],w[i+1]]);rounds.push(nx);}
