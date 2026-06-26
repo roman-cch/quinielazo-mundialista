@@ -1026,12 +1026,16 @@ function renderOrg(){
   h+=`<select id="sbpsel" onchange="loadOrgSide()"><option value="">— elige jugador —</option>${sortedPlayers().map(p=>`<option value="${p.id}">#${pad(p.dorsal)} · ${esc(p.name)}</option>`).join("")}</select>`;
   SIDE.forEach(([k,lbl])=>{h+=`<label class="fld">${lbl}</label><input data-osb="${k}" value="">`;});
   h+='<button class="btn" style="margin-top:12px" onclick="saveOrgSide()">Guardar premios del jugador</button></div>';
+  const csvJ=ST.jornadas.concat(koJornadas());
   h+=`<div class="card"><div class="subhead" style="margin-top:0">Exportar pronósticos a Excel</div>
-    <p class="muted">Elige una jornada y descarga su CSV (se abre en Excel o en Google Sheets/Drive): <b>partidos por grupo</b> en las filas y <b>cada jugador</b> en una columna con su pronóstico. Puedes descargarla <b>en cualquier momento</b>, esté abierta o cerrada.</p>
+    <p class="muted">Elige una jornada (de grupos o de <b>eliminatoria 1‑X‑2</b>) y descarga su CSV (se abre en Excel o en Google Sheets/Drive): <b>partidos</b> en las filas y <b>cada jugador</b> en una columna con su pronóstico. Puedes descargarla <b>en cualquier momento</b>, esté abierta o cerrada.</p>
     <div style="display:flex;gap:8px;align-items:center">
-      <select id="csvjor" style="flex:1">${ST.jornadas.map(j=>`<option value="${j.clave}">${esc(j.name)}</option>`).join("")}</select>
+      <select id="csvjor" style="flex:1">${csvJ.map(j=>`<option value="${j.clave}">${esc(j.name)}${j.ko?" · eliminatoria":""}</option>`).join("")}</select>
       <button class="btn" style="width:auto;white-space:nowrap;margin:0" onclick="downloadCSV()">⬇ Descargar CSV</button>
-    </div></div>`;
+    </div>`;
+  if(bracketReady())h+=`<div style="margin-top:14px"><p class="muted" style="margin:0 0 8px">Descarga la <b>hoja de ruta</b> completa: una fila por cruce de cada ronda (Dieciseisavos → Final) con el <b>ganador real</b> y el <b>marcador del bonus</b>, y el cuadro de <b>cada jugador</b> en su columna.</p>
+      <button class="btn alt" style="width:auto;white-space:nowrap;margin:0" onclick="downloadBracketCSV()">⬇ Descargar hoja de ruta (CSV)</button></div>`;
+  h+=`</div>`;
   h+='<button class="btn ghost" onclick="go(\'rank\')">Volver al ranking</button>';
   $("v-org").innerHTML=h;
 }
@@ -1040,12 +1044,13 @@ function renderOrg(){
 // momento (esté abierta o cerrada), pensado para que el organizador contraste.
 // Separador ';' + BOM UTF-8 para que Excel (es) reparta columnas y respete acentos.
 function downloadCSV(){
-  const sel=$("csvjor");const clave=sel?sel.value:(ST.jornadas[0]&&ST.jornadas[0].clave);
-  const j=ST.jornadas.find(x=>x.clave===clave);if(!j){toast("Elige una jornada");return;}
+  const all=ST.jornadas.concat(koJornadas());
+  const sel=$("csvjor");const clave=sel?sel.value:(all[0]&&all[0].clave);
+  const j=all.find(x=>x.clave===clave);if(!j){toast("Elige una jornada");return;}
   const SEP=";";
   const cell=v=>{v=(v==null?"":String(v));return /[";\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
   const players=sortedPlayers();
-  const recs=j.matches.map((m,idx)=>({g:(m.group||"").replace(/\d+$/,""),idx,m}));
+  const recs=j.matches.map((m,idx)=>({g:j.ko?j.name:(m.group||"").replace(/\d+$/,""),idx,m}));
   recs.sort((a,b)=>a.g.localeCompare(b.g)||a.idx-b.idx);
   const rows=[["Grupo","Partido","Resultado",...players.map(p=>p.name)]];
   recs.forEach(r=>{
@@ -1064,6 +1069,44 @@ function downloadCSV(){
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
   toast("✓ CSV de "+j.name+" descargado");
+}
+// Exporta a CSV la HOJA DE RUTA (cuadro de eliminatoria) de todos los jugadores:
+// filas = cada cruce de cada ronda (Dieciseisavos→Final) + el marcador del bonus,
+// columnas = el equipo que cada jugador pone como ganador en ese puesto del cuadro.
+// La columna "Ganador real" trae lo oficial cuando ya se conoce. Mismo formato (';'
+// + BOM UTF-8) que el CSV de jornadas para que Excel reparta columnas y respete acentos.
+function downloadBracketCSV(){
+  const b=ST.bracket;
+  if(!bracketReady()){toast("Aún no hay cuadro de eliminatoria");return;}
+  const SEP=";";
+  const cell=v=>{v=(v==null?"":String(v));return /[";\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+  const players=sortedPlayers();
+  const pkOf=id=>{const pd=ST.pdata[id];return (pd&&pd.bracket&&pd.bracket.picks)||{};};
+  const rows=[["Ronda","Cruce / puesto","Ganador real",...players.map(p=>p.name)]];
+  const st=startIdx(),first=firstRoundPairs();
+  for(let r=st;r<ROUNDS.length;r++){
+    const real=(b.real.w[r]||{}),isFinal=(r===ROUNDS.length-1);
+    for(let i=0;i<ROUNDS[r].size;i++){
+      const label=(r===st)?((first[i][0]||"¿?")+" - "+(first[i][1]||"¿?")):(isFinal?"Campeón":"Puesto "+(i+1));
+      const line=[ROUNDS[r].name,label,real[i]||""];
+      players.forEach(p=>{const pk=pkOf(p.id);line.push((pk[r]&&pk[r][i])||"");});
+      rows.push(line);
+    }
+  }
+  // Fila del bonus final (marcador exacto): real + el pronóstico de cada jugador.
+  const fline=["Final","Marcador exacto (bonus)",b.real.finalScore||""];
+  players.forEach(p=>{const pd=ST.pdata[p.id];fline.push((pd&&pd.bracket&&pd.bracket.bonus)||"");});
+  rows.push(fline);
+  const csv="﻿"+rows.map(r=>r.map(cell).join(SEP)).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const d=new Date(),p2=n=>String(n).padStart(2,"0");
+  const stamp=`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}_${p2(d.getHours())}-${p2(d.getMinutes())}`;
+  const a=document.createElement("a");
+  a.href=url;a.download="quinielazo_hoja-de-ruta_"+stamp+".csv";
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  toast("✓ CSV de la hoja de ruta descargado");
 }
 function isSpain(m){return /españa/i.test(m.home)||/españa/i.test(m.away);}
 // Elegir/desmarcar el partido de la jornada (solo uno; España siempre exacto).
