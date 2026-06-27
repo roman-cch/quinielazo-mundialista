@@ -1028,16 +1028,40 @@ function renderOrg(){
   h+='<button class="btn" style="margin-top:12px" onclick="saveOrgSide()">Guardar premios del jugador</button></div>';
   const csvJ=ST.jornadas.concat(koJornadas());
   h+=`<div class="card"><div class="subhead" style="margin-top:0">Exportar pronósticos a Excel</div>
-    <p class="muted">Elige una jornada (de grupos o de <b>eliminatoria 1‑X‑2</b>) y descarga su CSV (se abre en Excel o en Google Sheets/Drive): <b>partidos</b> en las filas y <b>cada jugador</b> en una columna con su pronóstico. Puedes descargarla <b>en cualquier momento</b>, esté abierta o cerrada.</p>
+    <p class="muted">La <b>quiniela 1‑X‑2</b> de una jornada: elige una (de grupos, o de una ronda final: <b>Dieciseisavos, Octavos, Cuartos…</b>) y descarga su CSV (se abre en Excel o en Google Sheets/Drive): <b>partidos</b> en las filas y <b>cada jugador</b> en una columna con su pronóstico 1‑X‑2. En las rondas finales el resultado es el de los <b>90'</b> (sin penaltis). Puedes descargarla <b>en cualquier momento</b>, esté abierta o cerrada. Es <b>distinta</b> de la hoja de ruta de más abajo.</p>
     <div style="display:flex;gap:8px;align-items:center">
-      <select id="csvjor" style="flex:1">${csvJ.map(j=>`<option value="${j.clave}">${esc(j.name)}${j.ko?" · eliminatoria":""}</option>`).join("")}</select>
+      <select id="csvjor" style="flex:1">${csvJ.map(j=>`<option value="${j.clave}">${esc(j.name)}${j.ko?" · quiniela 1‑X‑2":""}</option>`).join("")}</select>
       <button class="btn" style="width:auto;white-space:nowrap;margin:0" onclick="downloadCSV()">⬇ Descargar CSV</button>
     </div>`;
-  if(bracketReady())h+=`<div style="margin-top:14px"><p class="muted" style="margin:0 0 8px">Descarga la <b>hoja de ruta</b> completa: una fila por cruce de cada ronda (Dieciseisavos → Final) con el <b>ganador real</b> y el <b>marcador del bonus</b>, y el cuadro de <b>cada jugador</b> en su columna.</p>
+  if(bracketReady())h+=`<div style="margin-top:14px"><p class="muted" style="margin:0 0 8px">La <b>hoja de ruta</b> de la eliminatoria (un <b>único</b> CSV con todo el cuadro, no por jornada): una fila por cruce de cada ronda (Dieciseisavos → Final) con el <b>ganador real</b> (quien pasa, incl. penaltis) y el <b>marcador del bonus</b>, y el cuadro de <b>cada jugador</b> en su columna.</p>
       <button class="btn alt" style="width:auto;white-space:nowrap;margin:0" onclick="downloadBracketCSV()">⬇ Descargar hoja de ruta (CSV)</button></div>`;
   h+=`</div>`;
+  h+='<div class="card"><div class="subhead" style="margin-top:0">Resetear contraseña de un jugador</div>';
+  h+='<p class="muted">Si alguien olvida su contraseña, elígelo y resetéala. Volverá a su <b>contraseña inicial</b> (su nombre en minúsculas y sin espacios; p. ej. Jose Luis → <code>joseluis</code>) y la app le pedirá <b>cambiarla</b> en cuanto entre.</p>';
+  h+=`<select id="rstpsel"><option value="">— elige jugador —</option>${sortedPlayers().map(p=>`<option value="${p.id}">#${pad(p.dorsal)} · ${esc(p.name)}</option>`).join("")}</select>`;
+  h+='<button class="btn" style="margin-top:12px" onclick="resetPlayerPw(this)">Resetear contraseña</button></div>';
   h+='<button class="btn ghost" onclick="go(\'rank\')">Volver al ranking</button>';
   $("v-org").innerHTML=h;
+}
+// Resetea la contraseña de UN jugador a su inicial llamando a la función reset-one
+// con el token del organizador (el endpoint también acepta ese token, sin secreto).
+async function resetPlayerPw(btn){
+  const id=+($("rstpsel").value||0);
+  if(!id){toast("Elige un jugador");return;}
+  const p=PLAYERS.find(x=>x.id===id);
+  if(!p)return;
+  if(!confirm("¿Resetear la contraseña de "+p.name+"?\n\nVolverá a su contraseña inicial y la app le pedirá cambiarla al entrar."))return;
+  const old=btn.textContent;btn.disabled=true;btn.textContent="Reseteando…";
+  try{
+    const token=await window.__auth.getToken();
+    const r=await fetch("/.netlify/functions/reset-one",{method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
+      body:JSON.stringify({id})});
+    const j=await r.json().catch(()=>({}));
+    if(r.ok&&j.ok){toast("✓ Contraseña de "+p.name+" reseteada a: "+j.initialPassword);$("rstpsel").value="";}
+    else{toast("No se pudo: "+(j.error||("HTTP "+r.status)));}
+  }catch(e){toast("Error de red al resetear");}
+  btn.disabled=false;btn.textContent=old;
 }
 // Exporta a CSV los pronósticos de UNA jornada (la elegida en el selector):
 // filas = partidos por grupo, columnas = jugadores. Descargable en cualquier
