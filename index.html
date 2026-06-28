@@ -800,7 +800,7 @@ function renderProns(){
     const oH=openAcc["hoja"]!==undefined?openAcc["hoja"]:false;
     const brMeta=brClosed?'<span class="st st-lock">CERRADA</span>':('<span class="st st-edit">ABIERTA</span>'+(b.closeTime?' · cierra '+fmt(b.closeTime):''));
     h+=`<div class="acc ${oH?"open":""}"><div class="h" onclick="tacc('hoja')"><div><span class="t">◇ Hoja de ruta</span> <span class="meta">${brMeta}</span></div><span class="chev">▾</span></div><div class="b">`;
-    h+=`<div class="notice"><b>Límite: al empezar los Dieciseisavos${b.closeTime?' ('+fmt(b.closeTime)+')':''}.</b> Cuando arranque la eliminatoria debes tener <b>toda</b> la hoja de ruta rellena (hasta la final); después se cierra y ya no se puede tocar.</div>`;
+    h+=`<div class="notice"><b>Límite de los cruces: al empezar los Dieciseisavos${b.closeTime?' ('+fmt(b.closeTime)+')':''}.</b> Ten <b>toda</b> la hoja de ruta rellena (hasta la final) antes de esa hora; luego los cruces se cierran. El <b>marcador del bonus</b> de la final puedes seguir cambiándolo hasta que empiece la final.</div>`;
     h+='<p class="muted" style="margin:0 0 8px">Toca quién pasa en cada cruce; el cuadro avanza solo a la ronda siguiente. Desliza en horizontal para ver Octavos, Cuartos, Semifinales y la Final.</p>';
     h+=brBracketHTML(pk,brClosed);
     // El BONUS (marcador de la final) NO se cierra con los cruces: sigue abierto hasta el
@@ -1028,19 +1028,26 @@ function renderManual(){
     <p class="muted">El cierre es <b>automático</b>: cada jornada se bloquea justo al empezar su <b>primer partido</b> (reglamento). A partir de ahí ya no se puede tocar y verás tus aciertos y puntos, que se actualizan solos en cuanto entran los resultados (llegan automáticamente de fuentes oficiales; pueden tardar un poco).</p></div>
 
   <div class="card"><div class="subhead" style="margin-top:0">3 · Fase eliminatoria</div>
-    <p class="muted">Al empezar la eliminatoria, dentro de Pronósticos aparecen <b>dos cosas solas</b>:</p>
-    <div class="kvr"><span><b>◇ Hoja de ruta</b>: un <b>cuadro visual</b> (una ronda a la vez: Dieciseisavos → Final). Toca el equipo que crees que <b>pasa</b> en cada cruce; las rondas siguientes se rellenan con tus ganadores. Guarda o usa <b>Limpiar</b> para empezar de cero. <b>Límite: al empezar los Dieciseisavos</b> debes tenerla completa hasta la final; luego se cierra.</span><b>2/4/6/10/20</b></div>
-    <div class="kvr"><span>El <b>1-X-2</b> sigue por jornadas: debajo de la Jornada 3 salen <b>Dieciseisavos, Octavos…</b> con el mismo formato. Cada ronda tiene de <b>límite el inicio de esa ronda</b> (igual que las jornadas de grupos).</span><b>1 pt</b></div>
-    <div class="kvr"><span>Si cambias un cruce anterior de la hoja de ruta, los que dependían se reinician. Los cierres son automáticos.</span><b>auto</b></div>
-    <div class="kvr"><span>Bonus final · marcador exacto de la final</span><b>10/5/2</b></div></div>
+    <p class="muted">Al acabar la fase de grupos, dentro de <b>Pronósticos</b> aparecen <b>dos cosas solas</b>: la <b>hoja de ruta</b> y el <b>1‑X‑2 por rondas</b>.</p>
+    <div class="kvr"><span><b>◇ Hoja de ruta</b>: un <b>cuadro tipo bracket</b> con <b>todas las rondas a la vez</b> (Dieciseisavos → Octavos → Cuartos → Semifinales → Final). <b>Desliza en horizontal</b> para verlas. Toca el equipo que crees que <b>pasa</b> en cada cruce y la siguiente ronda se rellena sola con tus ganadores.</span><b>2/4/6/10/20</b></div>
+    <div class="kvr"><span>Rellénala <b>entera hasta la Final</b> y pulsa <b>Guardar mi cuadro</b> (o <b>Limpiar</b> para empezar de cero). Si cambias un cruce, los que dependían de él se reinician.</span><b></b></div>
+    <div class="kvr"><span><b>Cierre de los cruces:</b> al empezar los <b>Dieciseisavos</b>. Después el cuadro queda en solo lectura.</span><b>auto</b></div>
+    <div class="kvr"><span><b>Bonus final</b> (marcador exacto de la final): <b>sigue abierto hasta que empieza la final</b>, porque aún no se sabe quién la juega. Puedes entrar a ponerlo o cambiarlo aunque los cruces ya estén cerrados.</span><b>10/5/2</b></div>
+    <div class="kvr"><span>El <b>1‑X‑2</b> sigue por rondas: bajo la <b>Jornada 3</b> salen <b>Dieciseisavos, Octavos…</b> con el mismo formato. Cada ronda <b>cierra al empezar esa ronda</b>.</span><b>1 pt</b></div></div>
 
-  <div class="card"><div class="subhead" style="margin-top:0">4 · Premios individuales</div>
+  <div class="card"><div class="subhead" style="margin-top:0">4 · Ver lo que votan los demás</div>
+    <p class="muted">Mientras una jornada está <b>abierta</b>, los pronósticos de todos están <b>ocultos</b> (así nadie copia). En cuanto el plazo se cierra, se hacen <b>públicos</b> para que haya transparencia.</p>
+    <div class="kvr"><span>En <b>Pronósticos → ○ Pronósticos de los demás</b>, toca a un jugador para ver lo que votó</span><b></b></div>
+    <div class="kvr"><span>Verás sus <b>jornadas ya empezadas</b> (grupos y eliminatoria 1‑X‑2) y, una vez cerrados los cruces, su <b>hoja de ruta</b> completa</span><b></b></div>
+    <div class="kvr"><span>El <b>marcador del bonus</b> se revela solo <b>al empezar la final</b> (sigue oculto mientras se puede editar)</span><b></b></div></div>
+
+  <div class="card"><div class="subhead" style="margin-top:0">5 · Premios individuales</div>
     <p class="muted">Balón de Oro, Bota de Oro, mejor joven, equipo más y menos goleado. Ya están cargados y son <b>solo lectura</b> (+10 por acierto, se resuelven al final). Si te falta alguno, díselo al organizador.</p></div>
 
-  <div class="card"><div class="subhead" style="margin-top:0">5 · Ranking</div>
+  <div class="card"><div class="subhead" style="margin-top:0">6 · Ranking</div>
     <p class="muted">La pestaña <b>Ranking</b> muestra la clasificación en vivo, el podio y el mejor de cada jornada (premio de 10€). Se actualiza solo en cuanto entran resultados.</p></div>
 
-  <div class="card"><div class="subhead" style="margin-top:0">6 · Organizador (<svg class="tri" viewBox="0 0 24 24"><path d="M12 4 L20.7 19 L3.3 19 Z"/></svg>)</div>
+  <div class="card"><div class="subhead" style="margin-top:0">7 · Organizador (<svg class="tri" viewBox="0 0 24 24"><path d="M12 4 L20.7 19 L3.3 19 Z"/></svg>)</div>
     <p class="muted">Solo para el organizador (cuenta con permisos). <b>Partidos, jornadas, cierres, cruces de eliminatoria y resultados llegan automáticamente</b> desde fuentes oficiales; el organizador solo decide lo que el fútbol no dicta:</p>
     <div class="kvr"><span><b>Partido de la jornada</b> (el destacado a resultado exacto)</span><b>manual</b></div>
     <div class="kvr"><span><b>Premios individuales</b> (Balón/Bota de Oro…): resultados al final</span><b>manual</b></div>
