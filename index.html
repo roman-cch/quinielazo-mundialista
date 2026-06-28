@@ -1090,8 +1090,10 @@ function renderOrg(){
   // Manual del organizador (solo visible para organizadores)
   h+=`<div class="card"><div class="subhead" style="margin-top:0">Manual del organizador</div>
     <p class="muted" style="margin-top:0">Llega <b>solo</b> de fuentes oficiales (no tocar nada): jornadas y partidos, <b>local/visitante</b>, <b>resultados</b>, <b>cruces de eliminatoria</b> y las <b>fechas de cierre</b>.</p>
-    <div class="kvr"><span>Cada jornada se <b>cierra sola</b> al empezar su primer partido</span><b>auto</b></div>
-    <div class="kvr"><span>El cuadro se <b>cierra solo</b> al empezar la eliminatoria</span><b>auto</b></div>
+    <div class="kvr"><span>Cada jornada (grupos) se <b>cierra sola</b> al empezar su primer partido</span><b>auto</b></div>
+    <div class="kvr"><span>La eliminatoria llega <b>en el orden oficial del cuadro</b> (bracket); cada ronda del <b>1‑X‑2</b> cierra al empezar esa ronda</span><b>auto</b></div>
+    <div class="kvr"><span><b>Hoja de ruta:</b> los <b>cruces</b> cierran al empezar los Dieciseisavos; el <b>bonus</b> (marcador de la final) sigue abierto hasta que empieza la <b>final</b></span><b>auto</b></div>
+    <div class="kvr"><span>Al cerrarse, las jornadas y la hoja de ruta se hacen <b>públicas</b> para todos (transparencia)</span><b>auto</b></div>
     <div class="kvr"><span>Resultados y ranking se actualizan solos (pueden tardar ~1 h)</span><b>auto</b></div>
     <div class="subhead">Lo que SÍ haces tú</div>
     <div class="kvr"><span><b>1 · Partido de la jornada</b>: marca con ★ el destacado de cada jornada <u>antes</u> de que empiece (al cerrarse ya no cuenta). España va marcado solo.</span><b></b></div>
@@ -1116,7 +1118,7 @@ function renderOrg(){
   h+='</div>';
   const b=ST.bracket;
   h+=`<div class="card"><div class="subhead" style="margin-top:0">Fase eliminatoria · cuadro</div>
-    <div class="notice">El <b>cuadro completo</b> (cruces, resultados y la <b>fecha de cierre</b>) se genera y actualiza <b>solo</b> desde fuentes oficiales cuando empiece la eliminatoria. No hay que tocar nada.<br>${b.r16&&b.r16.length?("Cuadro actual: <b>"+b.r16.length+"</b> cruces · cierre "+(b.closeTime?fmt(b.closeTime):"se fijará solo")):"Aún no hay cruces (se cargarán al sortearse la eliminatoria)."}</div>
+    <div class="notice">El <b>cuadro completo</b> (cruces en el <b>orden oficial del bracket</b>, resultados y las <b>fechas de cierre</b> de cada ronda) se genera y actualiza <b>solo</b> desde fuentes oficiales. No hay que tocar nada. Los <b>cruces</b> cierran al empezar los Dieciseisavos y el <b>bonus de la final</b> al empezar la final.<br>${b.r16&&b.r16.length?("Cuadro actual: <b>"+b.r16.length+"</b> cruces · cierre "+(b.closeTime?fmt(b.closeTime):"se fijará solo")):"Aún no hay cruces (se cargarán al sortearse la eliminatoria)."}</div>
   </div>`;
   const sr=ST.sidebet.results||{};
   h+='<div class="card"><div class="subhead" style="margin-top:0">Resultados de premios individuales</div>';
