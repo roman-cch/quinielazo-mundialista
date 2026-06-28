@@ -65,9 +65,18 @@ exports.handler = async (event) => {
       }
       const brStr = (await db.ref("quiniela/bracket").get()).val();
       const br = parse(brStr) || {};
+      const FINAL_IDX = 4; // ROUNDS del cliente: 16avos..Final = 0..4
       if (br.closeTime && new Date(br.closeTime).getTime() < Date.now()) {
-        if (JSON.stringify(incoming.bracket || null) !== JSON.stringify(existing.bracket || null)) {
-          return json(403, { error: "Cuadro cerrado" });
+        // Empezada la eliminatoria: los CRUCES (picks) ya no se pueden cambiar.
+        const ip = JSON.stringify((incoming.bracket || {}).picks || null);
+        const ep = JSON.stringify((existing.bracket || {}).picks || null);
+        if (ip !== ep) return json(403, { error: "Cuadro cerrado (cruces)" });
+        // El BONUS (marcador de la final) sigue editable hasta el inicio de la FINAL.
+        const fc = br.rclose && br.rclose[FINAL_IDX];
+        if (fc && new Date(fc).getTime() < Date.now()) {
+          const ib = JSON.stringify((incoming.bracket || {}).bonus || null);
+          const eb = JSON.stringify((existing.bracket || {}).bonus || null);
+          if (ib !== eb) return json(403, { error: "Bonus cerrado (final empezada)" });
         }
       }
     }

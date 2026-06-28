@@ -169,10 +169,23 @@ exports.handler = async () => {
   // Si la API aún no trae cruces reales pero ya hay un cuadro sorteado guardado, se conserva;
   // si solo había placeholders TBD (o nada), queda vacío y se limpian esos placeholders.
   const existingReal = (existingBr.r16 || []).some((c) => c && c.a && c.b);
+  // Cierre por ronda KO = inicio del primer partido de esa ronda. Lo usan el 1-X-2 de
+  // eliminatorias y, sobre todo, el BONUS de la hoja de ruta (marcador de la final):
+  // el bonus sigue ABIERTO hasta que empieza la FINAL (rclose[4]), porque no se puede
+  // pedir el marcador de una final cuyos equipos aún no se conocen. Los CRUCES sí se
+  // cierran con los dieciseisavos (closeTime). Conservamos rclose previo si la API no trae fecha.
+  const rclose = {};
+  for (let idx = 0; idx <= 4; idx++) {
+    const first = ko[idx].reduce((min, m) => (m.utcDate && (!min || m.utcDate < min)) ? m.utcDate : min, null);
+    if (first) rclose[idx] = first;
+    else if (existingBr.rclose && existingBr.rclose[idx]) rclose[idx] = existingBr.rclose[idx];
+  }
   const bracket = {
     closeTime: koFirst || existingBr.closeTime || "",
     r16: r16real.length ? r16real : (existingReal ? existingBr.r16 : []),
     real: { w: {}, finalScore: existingBr.real ? existingBr.real.finalScore : "" },
+    rres: existingBr.rres || {},
+    rclose,
   };
   const winnerOf = (m) => m.score && m.score.winner === "HOME_TEAM" ? esTeam(m.homeTeam.name)
     : m.score && m.score.winner === "AWAY_TEAM" ? esTeam(m.awayTeam.name) : null;

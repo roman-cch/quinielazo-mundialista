@@ -803,10 +803,23 @@ function renderProns(){
     h+=`<div class="notice"><b>Límite: al empezar los Dieciseisavos${b.closeTime?' ('+fmt(b.closeTime)+')':''}.</b> Cuando arranque la eliminatoria debes tener <b>toda</b> la hoja de ruta rellena (hasta la final); después se cierra y ya no se puede tocar.</div>`;
     h+='<p class="muted" style="margin:0 0 8px">Toca quién pasa en cada cruce; el cuadro avanza solo a la ronda siguiente. Desliza en horizontal para ver Octavos, Cuartos, Semifinales y la Final.</p>';
     h+=brBracketHTML(pk,brClosed);
+    // El BONUS (marcador de la final) NO se cierra con los cruces: sigue abierto hasta el
+    // inicio de la final, porque aún no se sabe qué equipos la jugarán.
+    const finalIdx=ROUNDS.length-1;
+    const finalClose=(b.rclose&&b.rclose[finalIdx])||"";
+    const bonusClosed=finalClose&&new Date(finalClose)<new Date();
     const bs=parseScore(pd.bracket.bonus);
-    h+=`<div class="rndlbl">Bonus final · marcador exacto (10/5/2)</div><div class="exact" style="justify-content:flex-start"><input id="bonh" type="number" min="0" ${brClosed?"disabled":""} oninput="if(ME){DIRTY.add(ME);delete PENDING[ME]}" value="${bs?bs[0]:""}" style="width:54px"><span>-</span><input id="bona" type="number" min="0" ${brClosed?"disabled":""} oninput="if(ME){DIRTY.add(ME);delete PENDING[ME]}" value="${bs?bs[1]:""}" style="width:54px"></div>`;
-    if(brClosed)h+='<p class="muted" style="margin-top:8px"><span class="st st-lock">CERRADO</span> Cuadro en solo lectura.</p>';
-    else h+=`<div class="row" style="margin-top:12px;gap:8px"><button class="btn alt" style="flex:1" onclick="saveBracket()">Guardar mi cuadro</button><button class="btn ghost" style="flex:0 0 auto;width:auto;padding:14px 18px" onclick="clearBracket()">Limpiar</button></div><p class="muted" style="margin-top:8px">▲ Si cambias un cruce anterior, los siguientes que dependían se reinician.</p>`;
+    const bonHint=(!bonusClosed&&brClosed)?' · <b style="color:var(--teal2)">abierto hasta la final</b>':'';
+    h+=`<div class="rndlbl">Bonus final · marcador exacto (10/5/2)${bonHint}</div><div class="exact" style="justify-content:flex-start"><input id="bonh" type="number" min="0" ${bonusClosed?"disabled":""} oninput="if(ME){DIRTY.add(ME);delete PENDING[ME]}" value="${bs?bs[0]:""}" style="width:54px"><span>-</span><input id="bona" type="number" min="0" ${bonusClosed?"disabled":""} oninput="if(ME){DIRTY.add(ME);delete PENDING[ME]}" value="${bs?bs[1]:""}" style="width:54px"></div>`;
+    if(bonusClosed){
+      h+='<p class="muted" style="margin-top:8px"><span class="st st-lock">CERRADO</span> Cuadro y bonus en solo lectura: la final ya ha empezado.</p>';
+    }else if(brClosed){
+      // Cruces cerrados (empezó la eliminatoria) pero el bonus sigue editable.
+      h+=`<div class="notice" style="margin-top:10px">Los <b>cruces están cerrados</b> (ya empezó la eliminatoria), pero el <b>marcador del bonus</b> sigue abierto${finalClose?' hasta el inicio de la final ('+fmt(finalClose)+')':' hasta el inicio de la final'}.</div>`;
+      h+=`<button class="btn alt" style="margin-top:4px" onclick="saveBracket()">Guardar el marcador del bonus</button>`;
+    }else{
+      h+=`<div class="row" style="margin-top:12px;gap:8px"><button class="btn alt" style="flex:1" onclick="saveBracket()">Guardar mi cuadro</button><button class="btn ghost" style="flex:0 0 auto;width:auto;padding:14px 18px" onclick="clearBracket()">Limpiar</button></div><p class="muted" style="margin-top:8px">▲ Si cambias un cruce anterior, los siguientes que dependían se reinician.</p>`;
+    }
     h+='</div></div>';
   }
 
@@ -920,9 +933,12 @@ function renderElim(){
         const isSel=sel===tm;h+=`<div class="bx"><div class="tm ${isSel?"win":""}">${esc(tm)}</div><button class="${isSel?"selg":""}" ${closed?"disabled":""} onclick="pickBr(${r},${i},'${esc(tm).replace(/'/g,"\\'")}')">${isSel?"✓ pasa":"pasa"}</button></div>`;});
       h+='</div>';});
   });
+  const finalIdx=ROUNDS.length-1;
+  const finalClose=(b.rclose&&b.rclose[finalIdx])||"";
+  const bonusClosed=finalClose&&new Date(finalClose)<new Date();
   const bs=parseScore(pd.bracket.bonus);
-  h+=`<div class="rndlbl">Bonus final · marcador exacto (10/5/2)</div><div class="exact" style="justify-content:flex-start"><input id="bonh" type="number" min="0" ${closed?"disabled":""} oninput="if(ME){DIRTY.add(ME);delete PENDING[ME]}" value="${bs?bs[0]:""}" style="width:54px"><span>-</span><input id="bona" type="number" min="0" ${closed?"disabled":""} oninput="if(ME){DIRTY.add(ME);delete PENDING[ME]}" value="${bs?bs[1]:""}" style="width:54px"></div>`;
-  if(!closed)h+=`<button class="btn alt" style="margin-top:14px" onclick="saveBracket()">Guardar mi cuadro</button>`;
+  h+=`<div class="rndlbl">Bonus final · marcador exacto (10/5/2)${(!bonusClosed&&closed)?' · <b style="color:var(--teal2)">abierto hasta la final</b>':''}</div><div class="exact" style="justify-content:flex-start"><input id="bonh" type="number" min="0" ${bonusClosed?"disabled":""} oninput="if(ME){DIRTY.add(ME);delete PENDING[ME]}" value="${bs?bs[0]:""}" style="width:54px"><span>-</span><input id="bona" type="number" min="0" ${bonusClosed?"disabled":""} oninput="if(ME){DIRTY.add(ME);delete PENDING[ME]}" value="${bs?bs[1]:""}" style="width:54px"></div>`;
+  if(!bonusClosed)h+=`<button class="btn alt" style="margin-top:14px" onclick="saveBracket()">${closed?"Guardar el marcador del bonus":"Guardar mi cuadro"}</button>`;
   h+=`<p class="muted" style="margin-top:8px">▲ Si cambias un cruce anterior, los siguientes que dependían se reinician.</p>`;
   $("v-elim").innerHTML=h;
 }
@@ -968,8 +984,11 @@ function pickBr(r,i,tm){const pd=pdataOf(ME);pd.bracket=pd.bracket||{picks:{},bo
   for(let rr=r+1;rr<ROUNDS.length;rr++)pd.bracket.picks[rr]={};
   DIRTY.add(ME);delete PENDING[ME];renderActive();}
 async function saveBracket(){
-  if(ST.bracket.closeTime&&new Date(ST.bracket.closeTime)<new Date()){toast("Cuadro cerrado: ya no se puede guardar");renderActive();return;}
-  const pd=pdataOf(ME);const bh=$("bonh"),ba=$("bona");if(bh&&ba&&bh.value!==""&&ba.value!=="")pd.bracket.bonus=bh.value+"-"+ba.value;const ok=await savePlayer(ME);toast(ok?"✓ Cuadro guardado":"▲ Publica la app para guardar");}
+  // Tras los dieciseisavos los CRUCES ya no se pueden tocar (la UI los bloquea), pero el
+  // BONUS sigue editable hasta el inicio de la FINAL; solo entonces se bloquea todo.
+  const b=ST.bracket,fc=(b.rclose&&b.rclose[ROUNDS.length-1])||"";
+  if(fc&&new Date(fc)<new Date()){toast("La final ya ha empezado: el cuadro está cerrado");renderActive();return;}
+  const pd=pdataOf(ME);const bh=$("bonh"),ba=$("bona");if(bh&&ba&&bh.value!==""&&ba.value!=="")pd.bracket.bonus=bh.value+"-"+ba.value;const ok=await savePlayer(ME);toast(ok?"✓ Guardado":"▲ Publica la app para guardar");}
 function setBrRound(r){BRROUND=r;renderActive();}
 async function clearBracket(){
   if(ST.bracket.closeTime&&new Date(ST.bracket.closeTime)<new Date()){toast("Cuadro cerrado: ya no se puede vaciar");return;}
