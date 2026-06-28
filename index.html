@@ -469,6 +469,12 @@ function pj(v,d){if(v==null)return d;try{return JSON.parse(v)}catch(e){return d}
 
 let ST={jornadas:[],bracket:null,sidebet:null,pdata:{}};
 let ME=null, MYID=null, ORG=false, openAcc={}, CURTAB="rank", RANKVIEW="total", BRROUND=0;
+// Protección de ediciones locales frente al listener en vivo de Firebase:
+//  DIRTY   = ids de jugador con cambios en memoria SIN guardar todavía.
+//  PENDING = id -> último JSON guardado, a la espera de que el servidor lo confirme.
+// Mientras un id esté en cualquiera de los dos, loadAll() conserva la copia en memoria
+// y no la pisa con el snapshot del servidor (que puede ir por detrás).
+let DIRTY=new Set(), PENDING={};
 
 async function loadAll(){
   let j=pj(await sget("jornadas"),null);
@@ -483,12 +489,33 @@ async function loadAll(){
   if(!ST.bracket.real)ST.bracket.real={w:{},finalScore:""};
   if(!ST.bracket.real.w)ST.bracket.real.w={};
   ST.sidebet=pj(await sget("sidebet"),{results:{}});
-  ST.pdata={};
+  const prev=ST.pdata||{};
+  const np={};
   const keys=await slist("p:");
-  for(const k of keys){const v=pj(await sget(k),null);if(v){const id=+k.split(":")[1];ST.pdata[id]=v;}}
+  for(const k of keys){
+    const raw=await sget(k);const v=pj(raw,null);if(v==null)continue;
+    const id=+k.split(":")[1];
+    // Si el servidor ya devuelve exactamente lo que guardamos, soltamos la protección.
+    if(PENDING[id]!=null&&raw===PENDING[id]){delete PENDING[id];DIRTY.delete(id);}
+    // Edición local sin guardar, o guardado aún sin confirmar: conservamos la copia
+    // en memoria para que el snapshot en vivo no borre lo que el usuario está tocando.
+    if((DIRTY.has(id)||PENDING[id]!=null)&&prev[id]!=null)np[id]=prev[id];
+    else np[id]=v;
+  }
+  // Ediciones locales cuyo nodo aún no existe en el servidor (primer guardado en curso).
+  DIRTY.forEach(id=>{if(np[id]==null&&prev[id]!=null)np[id]=prev[id];});
+  Object.keys(PENDING).forEach(k=>{const id=+k;if(np[id]==null&&prev[id]!=null)np[id]=prev[id];});
+  ST.pdata=np;
 }
 function pdataOf(id){return ST.pdata[id]||(ST.pdata[id]={preds:{},bracket:{picks:{},bonus:""},sidebet:{}});}
-async function savePlayer(id){return await sset("p:"+id,pdataOf(id));}
+async function savePlayer(id){
+  const v=JSON.stringify(pdataOf(id));
+  const ok=await sset("p:"+id,v);
+  // Guardado correcto: marcamos como "pendiente de confirmar" y dejamos de tratarlo
+  // como sucio; si falla, sigue protegido como edición sin guardar.
+  if(ok){PENDING[id]=v;DIRTY.delete(id);}
+  return ok;
+}
 function getPick(id,clave,idx){
   const pd=ST.pdata[id];
   if(pd&&pd.preds&&pd.preds[clave]&&pd.preds[clave][idx]!=null)return pd.preds[clave][idx];
@@ -782,7 +809,7 @@ function renderProns(){
       h+='</div>';});
     h+='</div>';
     const bs=parseScore(pd.bracket.bonus);
-    h+=`<div class="rndlbl">Bonus final · marcador exacto (10/5/2)</div><div class="exact" style="justify-content:flex-start"><input id="bonh" type="number" min="0" ${brClosed?"disabled":""} value="${bs?bs[0]:""}" style="width:54px"><span>-</span><input id="bona" type="number" min="0" ${brClosed?"disabled":""} value="${bs?bs[1]:""}" style="width:54px"></div>`;
+    h+=`<div class="rndlbl">Bonus final · marcador exacto (10/5/2)</div><div class="exact" style="justify-content:flex-start"><input id="bonh" type="number" min="0" ${brClosed?"disabled":""} oninput="if(ME){DIRTY.add(ME);delete PENDING[ME]}" value="${bs?bs[0]:""}" style="width:54px"><span>-</span><input id="bona" type="number" min="0" ${brClosed?"disabled":""} oninput="if(ME){DIRTY.add(ME);delete PENDING[ME]}" value="${bs?bs[1]:""}" style="width:54px"></div>`;
     if(brClosed)h+='<p class="muted" style="margin-top:8px"><span class="st st-lock">CERRADO</span> Cuadro en solo lectura.</p>';
     else h+=`<div class="row" style="margin-top:12px;gap:8px"><button class="btn alt" style="flex:1" onclick="saveBracket()">Guardar mi cuadro</button><button class="btn ghost" style="flex:0 0 auto;width:auto;padding:14px 18px" onclick="clearBracket()">Limpiar</button></div><p class="muted" style="margin-top:8px">▲ Si cambias un cruce anterior, los siguientes que dependían se reinician.</p>`;
     h+='</div></div>';
@@ -899,13 +926,14 @@ function renderElim(){
       h+='</div>';});
   });
   const bs=parseScore(pd.bracket.bonus);
-  h+=`<div class="rndlbl">Bonus final · marcador exacto (10/5/2)</div><div class="exact" style="justify-content:flex-start"><input id="bonh" type="number" min="0" ${closed?"disabled":""} value="${bs?bs[0]:""}" style="width:54px"><span>-</span><input id="bona" type="number" min="0" ${closed?"disabled":""} value="${bs?bs[1]:""}" style="width:54px"></div>`;
+  h+=`<div class="rndlbl">Bonus final · marcador exacto (10/5/2)</div><div class="exact" style="justify-content:flex-start"><input id="bonh" type="number" min="0" ${closed?"disabled":""} oninput="if(ME){DIRTY.add(ME);delete PENDING[ME]}" value="${bs?bs[0]:""}" style="width:54px"><span>-</span><input id="bona" type="number" min="0" ${closed?"disabled":""} oninput="if(ME){DIRTY.add(ME);delete PENDING[ME]}" value="${bs?bs[1]:""}" style="width:54px"></div>`;
   if(!closed)h+=`<button class="btn alt" style="margin-top:14px" onclick="saveBracket()">Guardar mi cuadro</button>`;
   h+=`<p class="muted" style="margin-top:8px">▲ Si cambias un cruce anterior, los siguientes que dependían se reinician.</p>`;
   $("v-elim").innerHTML=h;
 }
 function pickBr(r,i,tm){const pd=pdataOf(ME);pd.bracket=pd.bracket||{picks:{},bonus:""};pd.bracket.picks[r]=pd.bracket.picks[r]||{};pd.bracket.picks[r][i]=tm;
-  for(let rr=r+1;rr<ROUNDS.length;rr++)pd.bracket.picks[rr]={};renderActive();}
+  for(let rr=r+1;rr<ROUNDS.length;rr++)pd.bracket.picks[rr]={};
+  DIRTY.add(ME);delete PENDING[ME];renderActive();}
 async function saveBracket(){
   if(ST.bracket.closeTime&&new Date(ST.bracket.closeTime)<new Date()){toast("Cuadro cerrado: ya no se puede guardar");renderActive();return;}
   const pd=pdataOf(ME);const bh=$("bonh"),ba=$("bona");if(bh&&ba&&bh.value!==""&&ba.value!=="")pd.bracket.bonus=bh.value+"-"+ba.value;const ok=await savePlayer(ME);toast(ok?"✓ Cuadro guardado":"▲ Publica la app para guardar");}
@@ -914,6 +942,7 @@ async function clearBracket(){
   if(ST.bracket.closeTime&&new Date(ST.bracket.closeTime)<new Date()){toast("Cuadro cerrado: ya no se puede vaciar");return;}
   if(!confirm("¿Vaciar toda tu hoja de ruta (todos los cruces y el bonus final)?"))return;
   const pd=pdataOf(ME);pd.bracket={picks:{},bonus:""};BRROUND=startIdx();
+  DIRTY.add(ME);delete PENDING[ME];
   const ok=await savePlayer(ME);toast(ok?"✓ Hoja de ruta vaciada":"▲ Publica la app para guardar");renderActive();}
 
 /* ============ MANUAL DE USO ============ */
@@ -1033,7 +1062,7 @@ function renderOrg(){
       <select id="csvjor" style="flex:1">${csvJ.map(j=>`<option value="${j.clave}">${esc(j.name)}${j.ko?" · quiniela 1‑X‑2":""}</option>`).join("")}</select>
       <button class="btn" style="width:auto;white-space:nowrap;margin:0" onclick="downloadCSV()">⬇ Descargar CSV</button>
     </div>`;
-  if(bracketReady())h+=`<div style="margin-top:14px"><p class="muted" style="margin:0 0 8px">La <b>hoja de ruta</b> de la eliminatoria (un <b>único</b> CSV con todo el cuadro, no por jornada): una fila por cruce de cada ronda (Dieciseisavos → Final) con el <b>ganador real</b> (quien pasa, incl. penaltis) y el <b>marcador del bonus</b>, y el cuadro de <b>cada jugador</b> en su columna.</p>
+  if(bracketReady())h+=`<div style="margin-top:14px"><p class="muted" style="margin:0 0 8px">La <b>hoja de ruta</b> de la eliminatoria (un <b>único</b> CSV con todo el cuadro, no por jornada): <b>una sección por jugador</b> con su cuadro completo ronda a ronda (Dieciseisavos → Final) — el <b>equipo que pasa</b> según él en cada cruce, el <b>ganador real</b> (incl. penaltis) y el <b>marcador del bonus</b>. Más largo, pero mucho más fácil de leer jugador a jugador.</p>
       <button class="btn alt" style="width:auto;white-space:nowrap;margin:0" onclick="downloadBracketCSV()">⬇ Descargar hoja de ruta (CSV)</button></div>`;
   h+=`</div>`;
   h+='<div class="card"><div class="subhead" style="margin-top:0">Resetear contraseña de un jugador</div>';
@@ -1094,33 +1123,41 @@ function downloadCSV(){
   setTimeout(()=>URL.revokeObjectURL(url),1000);
   toast("✓ CSV de "+j.name+" descargado");
 }
-// Exporta a CSV la HOJA DE RUTA (cuadro de eliminatoria) de todos los jugadores:
-// filas = cada cruce de cada ronda (Dieciseisavos→Final) + el marcador del bonus,
-// columnas = el equipo que cada jugador pone como ganador en ese puesto del cuadro.
-// La columna "Ganador real" trae lo oficial cuando ya se conoce. Mismo formato (';'
-// + BOM UTF-8) que el CSV de jornadas para que Excel reparta columnas y respete acentos.
+// Exporta a CSV la HOJA DE RUTA (cuadro de eliminatoria) JUGADOR POR JUGADOR:
+// una sección por jugador con TODO su cuadro proyectado (sus ganadores arrastran el
+// cruce a la ronda siguiente), ronda a ronda, con su elección, el ganador real y el
+// bonus. Es más largo que la versión en columnas, pero mucho más fácil de leer para
+// el organizador. Mismo formato (';' + BOM UTF-8) que el resto de CSV (Excel/Sheets).
 function downloadBracketCSV(){
   const b=ST.bracket;
   if(!bracketReady()){toast("Aún no hay cuadro de eliminatoria");return;}
   const SEP=";";
   const cell=v=>{v=(v==null?"":String(v));return /[";\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
   const players=sortedPlayers();
-  const pkOf=id=>{const pd=ST.pdata[id];return (pd&&pd.bracket&&pd.bracket.picks)||{};};
-  const rows=[["Ronda","Cruce / puesto","Ganador real",...players.map(p=>p.name)]];
-  const st=startIdx(),first=firstRoundPairs();
-  for(let r=st;r<ROUNDS.length;r++){
-    const real=(b.real.w[r]||{}),isFinal=(r===ROUNDS.length-1);
-    for(let i=0;i<ROUNDS[r].size;i++){
-      const label=(r===st)?((first[i][0]||"¿?")+" - "+(first[i][1]||"¿?")):(isFinal?"Campeón":"Puesto "+(i+1));
-      const line=[ROUNDS[r].name,label,real[i]||""];
-      players.forEach(p=>{const pk=pkOf(p.id);line.push((pk[r]&&pk[r][i])||"");});
-      rows.push(line);
+  const st=startIdx(),act=ROUNDS.slice(st),first=firstRoundPairs();
+  const rows=[];
+  rows.push(["Hoja de ruta · cuadro de eliminatoria de cada jugador"]);
+  rows.push(["Una sección por jugador: sus cruces ronda a ronda (Dieciseisavos → Final), su elección, el ganador real y el bonus."]);
+  rows.push([]);
+  players.forEach(p=>{
+    const pd=ST.pdata[p.id];
+    const pk=(pd&&pd.bracket&&pd.bracket.picks)||{};
+    // Cuadro PROYECTADO de este jugador: 1ª ronda = sorteo real; las siguientes se
+    // arman con sus propios ganadores (igual que se ve en pantalla).
+    let rounds=[first];
+    for(let li=0;li<act.length-1;li++){const prev=rounds[li],w=[];
+      for(let i=0;i<prev.length;i++){let sel=(pk[st+li]||{})[i];if(sel&&prev[i].indexOf(sel)<0)sel="";w.push(sel||"");}
+      const nx=[];for(let i=0;i<w.length;i+=2)nx.push([w[i],w[i+1]]);rounds.push(nx);}
+    rows.push(["JUGADOR","#"+pad(p.dorsal)+" "+p.name]);
+    rows.push(["Ronda","Equipo que pasa","Ganador real"]);
+    for(let li=0;li<act.length;li++){const r=st+li,real=(b.real.w[r]||{});
+      rounds[li].forEach((cr,i)=>{
+        rows.push([ROUNDS[r].name,(pk[r]&&pk[r][i])||"—",real[i]||""]);
+      });
     }
-  }
-  // Fila del bonus final (marcador exacto): real + el pronóstico de cada jugador.
-  const fline=["Final","Marcador exacto (bonus)",b.real.finalScore||""];
-  players.forEach(p=>{const pd=ST.pdata[p.id];fline.push((pd&&pd.bracket&&pd.bracket.bonus)||"");});
-  rows.push(fline);
+    rows.push(["Bonus final (marcador)",(pd&&pd.bracket&&pd.bracket.bonus)||"—",b.real.finalScore||""]);
+    rows.push([]);   // línea en blanco entre jugadores
+  });
   const csv="﻿"+rows.map(r=>r.map(cell).join(SEP)).join("\r\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
   const url=URL.createObjectURL(blob);
