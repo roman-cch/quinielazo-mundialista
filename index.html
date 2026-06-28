@@ -837,7 +837,7 @@ function renderProns(){
   if(!closedJs.length){
     h+='<div class="notice">En cuanto empiece una jornada (su primer partido) verás aquí los pronósticos de todos los jugadores. Hasta entonces se mantienen ocultos.</div>';
   }else{
-    h+='<p class="muted" style="margin:0 0 8px">Solo se muestran las jornadas que ya han empezado. Toca un jugador para ver sus pronósticos.</p>';
+    h+='<p class="muted" style="margin:0 0 8px">Solo se muestran las jornadas ya empezadas y la hoja de ruta una vez cerrada (al empezar los dieciseisavos). Toca un jugador para ver sus pronósticos.</p>';
     sortedPlayers().forEach(p=>{
       const o=openAcc["tp"+p.id]!==undefined?openAcc["tp"+p.id]:false;
       const totp=closedJs.reduce((acc,j)=>acc+jornadaScore(p.id,j).pts,0);
@@ -858,6 +858,19 @@ function renderProns(){
         });
         h+='</div></div>';
       });
+      // Hoja de ruta del jugador: visible para todos una vez cerrados los cruces (transparencia).
+      // El bonus (marcador de la final) se revela solo al empezar la final, para que no se copie.
+      if(bracketReady()&&b.closeTime&&new Date(b.closeTime)<new Date()){
+        const tpk=((ST.pdata[p.id]||{}).bracket||{}).picks||{};
+        const tbonus=((ST.pdata[p.id]||{}).bracket||{}).bonus||"";
+        const fclose=(b.rclose&&b.rclose[ROUNDS.length-1])||"";
+        const bonShow=fclose&&new Date(fclose)<new Date();
+        const ob=openAcc["tpb"+p.id]!==undefined?openAcc["tpb"+p.id]:false;
+        h+=`<div class="acc ${ob?"open":""}"><div class="h" onclick="event.stopPropagation();tacc('tpb${p.id}')"><div><span class="t">◇ Hoja de ruta</span> <span class="meta">cruces cerrados</span></div><span class="chev">▾</span></div><div class="b">`;
+        h+=brBracketHTML(tpk,true);
+        h+=`<div class="kvr" style="margin-top:8px"><span>Bonus final (marcador)</span><span><b>${bonShow?esc(tbonus||"—"):'<span class="muted" style="font-weight:600">se revela al empezar la final</span>'}</b></span></div>`;
+        h+='</div></div>';
+      }
       h+='</div></div>';
     });
   }
