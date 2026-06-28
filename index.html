@@ -1227,7 +1227,7 @@ function downloadBracketCSV(){
   const st=startIdx(),act=ROUNDS.slice(st);
   const rows=[];
   rows.push(["Hoja de ruta · cuadro de eliminatoria de cada jugador"]);
-  rows.push(["Una sección por jugador: sus cruces ronda a ronda (Dieciseisavos → Final), el cruce, quién pasa según él, el ganador real y el bonus."]);
+  rows.push(["Una sección por jugador: sus cruces ronda a ronda (Dieciseisavos → Final), cada equipo del cruce en su columna, quién pasa según él, el ganador real y el bonus."]);
   rows.push([]);
   players.forEach(p=>{
     const pd=ST.pdata[p.id];
@@ -1236,14 +1236,14 @@ function downloadBracketCSV(){
     // del CSV y los del cuadro del jugador son, por construcción, idénticos.
     const rounds=projectedRounds(pk);
     rows.push(["JUGADOR","#"+pad(p.dorsal)+" "+p.name]);
-    rows.push(["Ronda","Cruce","Equipo que pasa","Ganador real"]);
+    rows.push(["Ronda","Equipo 1","Equipo 2","Equipo que pasa","Ganador real"]);
     for(let li=0;li<act.length;li++){const r=st+li,real=(b.real.w[r]||{});
       rounds[li].forEach((cr,i)=>{
-        const cruce=((cr[0]||"¿?")+" - "+(cr[1]||"¿?"));
-        rows.push([ROUNDS[r].name,cruce,(pk[r]&&pk[r][i])||"—",real[i]||""]);
+        // Cada equipo del cruce en SU columna (antes iban "A - B" en una sola celda).
+        rows.push([ROUNDS[r].name,(cr[0]||"¿?"),(cr[1]||"¿?"),(pk[r]&&pk[r][i])||"—",real[i]||""]);
       });
     }
-    rows.push(["Bonus final (marcador)","",(pd&&pd.bracket&&pd.bracket.bonus)||"—",b.real.finalScore||""]);
+    rows.push(["Bonus final (marcador)","","",(pd&&pd.bracket&&pd.bracket.bonus)||"—",b.real.finalScore||""]);
     rows.push([]);   // línea en blanco entre jugadores
   });
   const csv="﻿"+rows.map(r=>r.map(cell).join(SEP)).join("\r\n");
