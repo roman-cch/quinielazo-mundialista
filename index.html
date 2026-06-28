@@ -580,9 +580,15 @@ function bracketScore(id){
   if(b.real.finalScore&&pd.bracket.bonus)pts+=exactPts(pd.bracket.bonus,b.real.finalScore,true);
   return {pts};
 }
+// Premios individuales: el organizador puede meter VARIOS aciertos válidos separados por
+// comas (empates: p. ej. dos equipos menos goleados). Se normaliza (sin acentos, en
+// minúsculas y con espacios colapsados) para que cuadre con lo que escribió el jugador,
+// y se da por acertado si su respuesta coincide con CUALQUIERA de los válidos.
+function normTxt(s){return (s||"").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g," ");}
+function sideHit(res,pick){const p=normTxt(pick);if(!p)return false;return String(res||"").split(",").map(normTxt).filter(Boolean).some(a=>a===p);}
 function sideScore(id){
   const res=ST.sidebet.results||{};let pts=0;
-  SIDE.forEach(([k])=>{const a=(res[k]||"").trim().toLowerCase(),b=(sidePick(id,k)||"").trim().toLowerCase();if(a&&b&&a===b)pts+=10;});
+  SIDE.forEach(([k])=>{if(sideHit(res[k],sidePick(id,k)))pts+=10;});
   return pts;
 }
 function totalScore(id){
@@ -827,7 +833,7 @@ function renderProns(){
   const oSB=openAcc["prsb"]!==undefined?openAcc["prsb"]:false;
   h+=`<div class="acc ${oSB?"open":""}"><div class="h" onclick="tacc('prsb')"><div><span class="t">Premios individuales</span> <span class="meta">+10 cada acierto</span></div><span class="chev">▾</span></div><div class="b">`;
   SIDE.forEach(([k,lbl])=>{const res=(ST.sidebet.results||{})[k];const mine=sidePick(ME,k);let chip;
-    if(res){const ok=(res||"").trim().toLowerCase()===((mine||"").trim().toLowerCase());chip=ok?'<span class="chip ok">✓ 10</span>':'<span class="chip no">✗</span>';}else chip='<span class="chip wait">···</span>';
+    if(res){const ok=sideHit(res,mine);chip=ok?'<span class="chip ok">✓ 10</span>':'<span class="chip no">✗</span>';}else chip='<span class="chip wait">···</span>';
     h+=`<div class="kvr"><span>${lbl}</span><span>${esc(mine||"—")} ${chip}</span></div>`;});
   h+='</div></div>';
 
@@ -1122,7 +1128,8 @@ function renderOrg(){
   </div>`;
   const sr=ST.sidebet.results||{};
   h+='<div class="card"><div class="subhead" style="margin-top:0">Resultados de premios individuales</div>';
-  SIDE.forEach(([k,lbl])=>{h+=`<label class="fld">${lbl}</label><input data-sb="${k}" value="${esc(sr[k]||"")}">`;});
+  h+='<p class="muted" style="margin-top:0">Si hay <b>empate</b> (p. ej. dos equipos menos goleados), pon <b>todos los aciertos válidos separados por comas</b> y acertará quien haya puesto cualquiera de ellos. Da igual mayúsculas y acentos. El <b>Balón de Oro</b> normalmente es uno solo.</p>';
+  SIDE.forEach(([k,lbl])=>{h+=`<label class="fld">${lbl}${k==="balon"?"":' <span class="muted">(varios = separa por comas)</span>'}</label><input data-sb="${k}" placeholder="${k==="balon"?"un nombre":"uno o varios, separados por comas"}" value="${esc(sr[k]||"")}">`;});
   h+='<button class="btn" style="margin-top:12px" onclick="saveSide()">Guardar premios</button></div>';
   h+='<div class="card"><div class="subhead" style="margin-top:0">Premios individuales de un jugador (completar / corregir)</div>';
   h+='<p class="muted">Rellena a quien le falte (p. ej. Jorge Aguilar) o corrige cualquiera. Los jugadores no pueden editarlo.</p>';
