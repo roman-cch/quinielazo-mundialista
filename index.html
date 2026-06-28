@@ -747,6 +747,15 @@ function renderRank(){
         const tag=b.complete?'<span class="tag10">10€</span>':`<span class="st st-edit">provisional ${b.done}/${b.total}</span>`;
         h+=`<div class="kvr"><span>${esc(j.name)} ${tag}</span><b>${b.winners.map(w=>esc(w.name)).join(", ")} · ${b.best} pts</b></div>`;});
       h+='</div>';}
+    // Ganadores OFICIALES de los premios individuales (los fija el organizador). Los de
+    // equipos (más/menos goleado) pueden estar ya; los de jugador suelen resolverse al
+    // final, así que hasta entonces salen como "pendiente". Si hay empate se listan todos.
+    h+='<div class="card"><h2 class="sec">◆ Premios individuales · ganadores</h2>';
+    const sres=ST.sidebet.results||{};
+    SIDE.forEach(([k,lbl])=>{const v=(sres[k]||"").trim();
+      h+=`<div class="kvr"><span>${esc(lbl)}</span>${v?('<b>'+esc(v)+'</b>'):'<span class="chip wait">pendiente</span>'}</div>`;});
+    h+='<p class="muted" style="margin-top:8px">Resultados oficiales (no son pronósticos). Si hay <b>empate</b> se listan todos los ganadores; quien acertó cualquiera suma <b>+10</b>.</p>';
+    h+='</div>';
   }
   h+='<p class="muted" style="text-align:center">Se actualiza solo en cuanto entran los resultados. ○ △ □</p>';
   $("v-rank").innerHTML=h;
