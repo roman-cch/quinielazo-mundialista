@@ -140,6 +140,25 @@ exports.handler = async () => {
   const ord = (a, b) => new Date(a.utcDate) - new Date(b.utcDate) || a.id - b.id;
   Object.keys(ko).forEach((k) => ko[k].sort(ord));
 
+  // La 1ª ronda (dieciseisavos) NO va por fecha: sigue el ORDEN CANONICO del bracket
+  // oficial (_lib/order.js -> R16). El cliente forma octavos/cuartos emparejando cruces
+  // adyacentes (1-2, 3-4, ...), asi que si r16 llega en orden de fecha el cuadro entero
+  // sale descuadrado (mitades cruzadas: España y Argentina del mismo lado). Emparejamos
+  // por PAR de equipos (da igual local/visitante), igual que en las jornadas de grupos.
+  const R16ORD = ORDER.R16;
+  if (R16ORD && ko[0].length) {
+    const pkey = (h, a) => [String(h).trim(), String(a).trim()].sort().join("|");
+    const teamsOf = (m) => [esTeam(m.homeTeam && m.homeTeam.name), esTeam(m.awayTeam && m.awayTeam.name)];
+    const byPair = {};
+    ko[0].forEach((m) => { const [h, a] = teamsOf(m); byPair[pkey(h, a)] = m; });
+    const used = new Set();
+    const ordered = [];
+    R16ORD.forEach(([h, a]) => { const k = pkey(h, a); if (byPair[k]) { ordered.push(byPair[k]); used.add(k); } });
+    // Cualquier cruce que no estuviera en el orden canonico se anade al final (por fecha).
+    ko[0].forEach((m) => { const [h, a] = teamsOf(m); const k = pkey(h, a); if (!used.has(k)) ordered.push(m); });
+    ko[0] = ordered;
+  }
+
   const existingBr = parse((await db.ref("quiniela/bracket").get()).val()) || { closeTime: "", r16: [], real: { w: {}, finalScore: "" } };
   // Cierre automático del cuadro = inicio del primer partido de la eliminatoria
   // (reglamento: "antes del inicio de las eliminatorias se completa la hoja de ruta").

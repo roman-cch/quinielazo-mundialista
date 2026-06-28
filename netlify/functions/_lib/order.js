@@ -295,5 +295,27 @@ module.exports = {
       "Croacia",
       "Ghana"
     ]
+  ],
+  // Orden canonico del CUADRO de eliminatoria (dieciseisavos), de arriba a abajo segun el
+  // bracket oficial. El sync DEBE ordenar r16 por esto y NUNCA por fecha: si no, octavos y
+  // cuartos emparejan cruces equivocados y las mitades del cuadro salen cruzadas (p.ej.
+  // España y Argentina acaban del mismo lado). Octavos = ganadores de (1,2),(3,4)...
+  "R16": [
+    ["Sudáfrica", "Canadá"],
+    ["Países Bajos", "Marruecos"],
+    ["Alemania", "Paraguay"],
+    ["Francia", "Suecia"],
+    ["Bélgica", "Senegal"],
+    ["Estados Unidos", "Bosnia y Herzegovina"],
+    ["España", "Austria"],
+    ["Portugal", "Croacia"],
+    ["Brasil", "Japón"],
+    ["Costa de Marfil", "Noruega"],
+    ["México", "Ecuador"],
+    ["Inglaterra", "RD Congo"],
+    ["Suiza", "Argelia"],
+    ["Colombia", "Ghana"],
+    ["Australia", "Egipto"],
+    ["Argentina", "Cabo Verde"]
   ]
 };
