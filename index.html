@@ -192,6 +192,13 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--pink);bo
 .brk-team:active{transform:scale(.985)}
 .brk-team.on{background:linear-gradient(180deg,rgba(21,214,168,.55),rgba(31,184,155,.42));border-color:var(--teal);color:#03241d;font-weight:800;box-shadow:inset 0 0 12px rgba(31,184,155,.25)}
 .brk-team.tbd{color:var(--mut);font-style:italic;font-weight:600;cursor:default}
+/* Resultado REAL del cruce (quién pasó): ganador con borde dorado + trofeo; el eliminado, atenuado. */
+.brk-team.real{box-shadow:inset 3px 0 0 var(--gold)}
+.brk-team.real:not(.on){background:rgba(244,194,13,.14);color:#ffe6a3;font-weight:800}
+.brk-team.real.on{box-shadow:inset 3px 0 0 var(--gold),inset 0 0 12px rgba(31,184,155,.25)}
+.brk-team.out:not(.on){opacity:.5;text-decoration:line-through;text-decoration-color:rgba(255,255,255,.3)}
+.brk-team.out.on{opacity:.62}
+.brk-tr{font-size:11px;filter:drop-shadow(0 0 4px rgba(244,194,13,.6))}
 .brk-ck{font-weight:900}
 .brk-cell.top::after,.brk-cell.bot::after{content:"";position:absolute;left:calc(100% - 18px);width:18px;height:calc(var(--cell)*var(--mult)/2);border-right:2px solid var(--line)}
 .brk-cell.top::after{top:50%;border-top:2px solid var(--line)}
@@ -988,25 +995,38 @@ function projectedRounds(pk){
    siguiente se arma con los ganadores que va eligiendo el jugador; los cruces que aún
    no existen quedan "por definir". El alto de cada celda (2^ronda) hace que todo cuadre. */
 function brBracketHTML(pk,closed){
+  const b=ST.bracket,realW=(b&&b.real&&b.real.w)||{};
   const st=startIdx(),act=ROUNDS.slice(st),rounds=projectedRounds(pk);
   let h='<div class="brk">';
   for(let li=0;li<act.length;li++){const r=st+li,isLast=(li===act.length-1);
     h+=`<div class="brk-col" style="--mult:${1<<li}"><div class="brk-h">${esc(ROUNDS[r].name)}</div>`;
+    const rw=realW[r]||{};            // ganador REAL de cada cruce de esta ronda (por slot)
+    const realPairs=koMatchups(r);    // equipos reales del cruce (mismo slot del bracket)
     rounds[li].forEach((cr,i)=>{
       const cellCls=isLast?"brk-cell":("brk-cell "+(i%2===0?"top":"bot"));
       const sel=(pk[r]||{})[i]||"";
+      const winT=rw[i]||"";                 // quién pasó de verdad en este cruce
+      const pair=realPairs[i]||["",""];     // los dos equipos que jugaron de verdad
       h+=`<div class="${cellCls}"><div class="brk-card">`;
       [0,1].forEach(side=>{const tm=cr[side]||"";
         if(!tm){h+='<div class="brk-team tbd">por definir</div>';return;}
         const on=sel===tm;
-        if(closed)h+=`<div class="brk-team${on?" on":""}">${esc(tm)}${on?' <span class="brk-ck">✓</span>':''}</div>`;
-        else h+=`<div class="brk-team${on?" on":""}" onclick="pickBr(${r},${i},'${esc(tm).replace(/'/g,"\\'")}')">${esc(tm)}${on?' <span class="brk-ck">✓</span>':''}</div>`;
+        const isWin=winT&&tm===winT;                                  // ganador real del cruce
+        const isOut=winT&&tm!==winT&&(pair[0]===tm||pair[1]===tm);    // jugó y quedó eliminado
+        const cls="brk-team"+(on?" on":"")+(isWin?" real":"")+(isOut?" out":"");
+        const marks=(on?' <span class="brk-ck">✓</span>':'')+(isWin?' <span class="brk-tr">🏆</span>':'');
+        if(closed)h+=`<div class="${cls}">${esc(tm)}${marks}</div>`;
+        else h+=`<div class="${cls}" onclick="pickBr(${r},${i},'${esc(tm).replace(/'/g,"\\'")}')">${esc(tm)}${marks}</div>`;
       });
       h+='</div></div>';
     });
     h+='</div>';
   }
-  return h+'</div>';
+  h+='</div>';
+  // Leyenda: solo cuando ya hay algún ganador real cargado (cruces ya jugados).
+  const anyReal=Object.keys(realW).some(r=>Object.values(realW[r]||{}).some(w=>w));
+  if(anyReal)h+='<p class="muted" style="margin:6px 2px 0;font-size:11px">🏆 <b>quién pasó de verdad</b> (resultado oficial) · <span style="color:var(--teal2)">✓ tu pronóstico</span> · los eliminados salen tachados.</p>';
+  return h;
 }
 function pickBr(r,i,tm){const pd=pdataOf(ME);pd.bracket=pd.bracket||{picks:{},bonus:""};pd.bracket.picks[r]=pd.bracket.picks[r]||{};pd.bracket.picks[r][i]=tm;
   for(let rr=r+1;rr<ROUNDS.length;rr++)pd.bracket.picks[rr]={};
