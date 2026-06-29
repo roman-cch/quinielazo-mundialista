@@ -194,6 +194,12 @@ exports.handler = async () => {
       if (m.status !== "FINISHED") return;
       const w = winnerOf(m);
       if (w) { bracket.real.w[idx] = bracket.real.w[idx] || {}; bracket.real.w[idx][i] = w; }
+      // 1-X-2 de eliminatoria: marcador del partido (mismo índice/orden que real.w para
+      // que cuadren). Es lo que lee la "jornada" de cada ronda (b.rres) para mostrar el
+      // resultado y puntuar el signo, igual que en la fase de grupos. Si el cruce se
+      // decidió en penaltis, fullTime es el empate (signo X) y real.w guarda quién pasó.
+      const sc = resultOf(m);
+      if (sc) { bracket.rres[idx] = bracket.rres[idx] || {}; bracket.rres[idx][i] = sc; }
       if (idx === 4 && m.score && m.score.fullTime && m.score.fullTime.home != null) {
         bracket.real.finalScore = `${m.score.fullTime.home}-${m.score.fullTime.away}`;
       }
