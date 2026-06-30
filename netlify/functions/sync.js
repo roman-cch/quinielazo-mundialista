@@ -43,6 +43,18 @@ const groupLetter = (g) => (g ? String(g).replace(/^GROUP[_\s]?/i, "").trim() : 
 const resultOf = (m) => m.status === "FINISHED" && m.score && m.score.fullTime &&
   m.score.fullTime.home != null && m.score.fullTime.away != null
   ? `${m.score.fullTime.home}-${m.score.fullTime.away}` : "";
+// Resultado de los 90 minutos para el 1-X-2 de eliminatorias. CUIDADO: football-data
+// devuelve en score.fullTime el marcador TOTAL, que INCLUYE prórroga y penaltis (p. ej.
+// un 1-1 resuelto 3-2 en penaltis llega como fullTime 3-4). El de los 90' (en realidad,
+// fin del tiempo reglamentario antes de penaltis) está en score.regularTime cuando hubo
+// prórroga/penaltis; en partidos normales regularTime no viene y fullTime ya es el de 90'.
+// Para el 1-X-2 cuenta el de los 90 minutos (reglamento §3 + criterio de la organización).
+const result90 = (m) => {
+  if (m.status !== "FINISHED" || !m.score) return "";
+  const t = (m.score.regularTime && m.score.regularTime.home != null)
+    ? m.score.regularTime : m.score.fullTime;
+  return t && t.home != null && t.away != null ? `${t.home}-${t.away}` : "";
+};
 
 exports.handler = async () => {
   const admin = getAdmin();
@@ -194,11 +206,12 @@ exports.handler = async () => {
       if (m.status !== "FINISHED") return;
       const w = winnerOf(m);
       if (w) { bracket.real.w[idx] = bracket.real.w[idx] || {}; bracket.real.w[idx][i] = w; }
-      // 1-X-2 de eliminatoria: marcador del partido (mismo índice/orden que real.w para
-      // que cuadren). Es lo que lee la "jornada" de cada ronda (b.rres) para mostrar el
-      // resultado y puntuar el signo, igual que en la fase de grupos. Si el cruce se
-      // decidió en penaltis, fullTime es el empate (signo X) y real.w guarda quién pasó.
-      const sc = resultOf(m);
+      // 1-X-2 de eliminatoria: marcador a los 90 MINUTOS (mismo índice/orden que real.w
+      // para que cuadren). Es lo que lee la "jornada" de cada ronda (b.rres) para mostrar
+      // el resultado y puntuar el signo, igual que en la fase de grupos. Si el cruce se
+      // decidió en prórroga/penaltis, result90 devuelve el marcador de los 90' (un empate
+      // = signo X cuando hubo penaltis) y real.w guarda aparte quién pasó la ronda.
+      const sc = result90(m);
       if (sc) { bracket.rres[idx] = bracket.rres[idx] || {}; bracket.rres[idx][i] = sc; }
       if (idx === 4 && m.score && m.score.fullTime && m.score.fullTime.home != null) {
         bracket.real.finalScore = `${m.score.fullTime.home}-${m.score.fullTime.away}`;
