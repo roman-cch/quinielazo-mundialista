@@ -147,7 +147,9 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--pink);bo
 .mt .nm{flex:1;font-size:14px}
 .mt .star{color:var(--gold);font-size:12px}
 .picks{display:flex;gap:6px}
-.pk{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--line);color:var(--txt);border-radius:11px;padding:10px 0;font-weight:800;text-align:center;font-size:15px;transition:.15s}
+.pk{flex:1;min-width:0;background:rgba(255,255,255,.04);border:1px solid var(--line);color:var(--txt);border-radius:11px;padding:8px 4px;font-weight:800;text-align:center;font-size:15px;transition:.15s;display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1.15}
+.pk .pks{font-size:15px;font-weight:800}
+.pk .pkt{font-size:11px;font-weight:600;opacity:.82;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pk.on{background:linear-gradient(180deg,rgba(237,27,118,.55),rgba(138,26,208,.4));border-color:rgba(255,46,142,.7);color:#fff;box-shadow:0 0 14px rgba(237,27,118,.35),0 1px 0 rgba(255,255,255,.25) inset}
 .exact{display:flex;gap:6px;align-items:center;justify-content:flex-end}
 .exact input{width:46px;text-align:center;padding:8px 0;font-weight:800}
@@ -806,7 +808,7 @@ function renderProns(){
         const pred=getPick(ME,j.clave,idx);
         h+=`<div class="match"><div class="mt"><span class="gr">${m.group}</span><span class="nm">${esc(m.home)} - ${esc(m.away)} ${m.exact?'<span class="star">★ exacto</span>':""}</span></div>`;
         if(m.exact){const ps=parseScore(pred);h+=`<div class="exact"><input type="number" min="0" data-s="h" value="${ps?ps[0]:""}"><span>-</span><input type="number" min="0" data-s="a" value="${ps?ps[1]:""}"></div>`;}
-        else{h+='<div class="picks">'+["1","x","2"].map(x=>`<button class="pk ${pred===x?"on":""}" onclick="setPk(this)">${x.toUpperCase()}</button>`).join("")+'</div>';}
+        else{h+=picksHTML(m,pred,false);}
         h+='</div>';
       });
       h+=`<button class="btn" style="margin-top:10px" onclick="saveFill('${j.clave}',this)">Guardar mi quiniela</button>`;
@@ -913,7 +915,7 @@ function renderFill(){
       const pred=getPick(ME,j.clave,idx);
       h+=`<div class="match"><div class="mt"><span class="gr">${m.group}</span><span class="nm">${esc(m.home)} - ${esc(m.away)} ${m.exact?'<span class="star">★ exacto</span>':""}</span></div>`;
       if(m.exact){const ps=parseScore(pred);h+=`<div class="exact"><input type="number" min="0" ${closed?"disabled":""} data-s="h" value="${ps?ps[0]:""}"><span>-</span><input type="number" min="0" ${closed?"disabled":""} data-s="a" value="${ps?ps[1]:""}"></div>`;}
-      else{h+='<div class="picks">'+["1","x","2"].map(s=>`<button class="pk ${pred===s?"on":""}" ${closed?"disabled":""} onclick="setPk(this)">${s.toUpperCase()}</button>`).join("")+'</div>';}
+      else{h+=picksHTML(m,pred,closed);}
       h+='</div>';
     });
     if(!closed)h+=`<button class="btn" style="margin-top:10px" onclick="saveFill('${j.clave}',this)">Guardar mi quiniela</button>`;
@@ -926,6 +928,11 @@ function renderFill(){
   $("v-fill").innerHTML=h;
 }
 function setPk(btn){btn.closest(".picks").querySelectorAll(".pk").forEach(b=>b.classList.remove("on"));btn.classList.add("on");}
+// Botones 1-X-2 con el NOMBRE del equipo debajo (1=local, 2=visitante, X=empate) para que
+// nadie marque el signo equivocado. El valor que se guarda va en data-v ("1"/"x"/"2"); NO
+// se lee del texto (saveFill usa data-v), así que la etiqueta puede ser el nombre del equipo.
+function pkLabel(m,s){return s==="1"?esc(m.home):s==="2"?esc(m.away):"Empate";}
+function picksHTML(m,pred,closed){return '<div class="picks">'+["1","x","2"].map(s=>`<button class="pk ${pred===s?"on":""}" data-v="${s}" ${closed?"disabled":""} onclick="setPk(this)"><span class="pks">${s.toUpperCase()}</span><span class="pkt">${pkLabel(m,s)}</span></button>`).join("")+'</div>';}
 async function saveFill(clave,btn){
   const jx=ST.jornadas.find(x=>x.clave===clave)||koJornadas().find(x=>x.clave===clave);
   if(jx&&jx.closeTime&&new Date(jx.closeTime)<new Date()){toast("Ronda cerrada: ya no se puede guardar");renderActive();return;}
@@ -936,7 +943,7 @@ async function saveFill(clave,btn){
   const body=btn.closest(".b");const pd=pdataOf(ME);pd.preds=pd.preds||{};const cur={};
   body.querySelectorAll(".match").forEach((mt,i)=>{
     const picks=mt.querySelector(".picks");
-    if(picks){const on=picks.querySelector(".pk.on");if(on)cur[i]=on.textContent.trim().toLowerCase();}
+    if(picks){const on=picks.querySelector(".pk.on");if(on)cur[i]=(on.dataset.v||on.textContent.trim().toLowerCase());}
     const exh=mt.querySelector('[data-s="h"]'),exa=mt.querySelector('[data-s="a"]');
     if(exh&&exa&&exh.value!==""&&exa.value!=="")cur[i]=exh.value+"-"+exa.value;
   });
