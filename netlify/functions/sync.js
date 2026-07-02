@@ -225,9 +225,12 @@ exports.handler = async () => {
       // = signo X cuando hubo penaltis) y real.w guarda aparte quién pasó la ronda.
       const sc = result90(m);
       if (sc) { bracket.rres[idx] = bracket.rres[idx] || {}; bracket.rres[idx][i] = sc; }
-      if (idx === 4 && m.score && m.score.fullTime && m.score.fullTime.home != null) {
-        bracket.real.finalScore = `${m.score.fullTime.home}-${m.score.fullTime.away}`;
-      }
+      // BONUS de la final: marcador de los 90 MINUTOS (decisión de la organización,
+      // §7 del reglamento, anunciada al grupo). Si la final va a prórroga, cuenta el
+      // empate del tiempo reglamentario, NO el marcador de la prórroga. result90 ya
+      // trae el blindaje contra el desglose incompleto de la API (devuelve "" y se
+      // rellena en un sync posterior).
+      if (idx === 4 && sc) bracket.real.finalScore = sc;
     });
   }
 
