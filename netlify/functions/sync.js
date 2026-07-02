@@ -51,8 +51,20 @@ const resultOf = (m) => m.status === "FINISHED" && m.score && m.score.fullTime &
 // Para el 1-X-2 cuenta el de los 90 minutos (reglamento §3 + criterio de la organización).
 const result90 = (m) => {
   if (m.status !== "FINISHED" || !m.score) return "";
-  const t = (m.score.regularTime && m.score.regularTime.home != null)
-    ? m.score.regularTime : m.score.fullTime;
+  const s = m.score;
+  // Si el desglose de 90' está, es LA fuente. Siempre.
+  const rt = s.regularTime;
+  if (rt && rt.home != null && rt.away != null) return `${rt.home}-${rt.away}`;
+  // Sin desglose: fullTime solo vale si NADA indica prórroga/penaltis. football-data
+  // tarda HORAS en publicar regularTime tras una prórroga (pasó con Bélgica-Senegal:
+  // toda la noche sirviendo fullTime 3-2 sin regularTime 2-2, y el 1-X-2 dio por buena
+  // la victoria cuando a los 90' fue X). Mejor dejar el partido "pendiente" una hora
+  // más que puntuar el signo equivocado a media liga; el siguiente sync lo rellena.
+  const huboProrroga = (s.duration && s.duration !== "REGULAR")
+    || (s.extraTime && s.extraTime.home != null)
+    || (s.penalties && s.penalties.home != null);
+  if (huboProrroga) return "";
+  const t = s.fullTime;
   return t && t.home != null && t.away != null ? `${t.home}-${t.away}` : "";
 };
 
