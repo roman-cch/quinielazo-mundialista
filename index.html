@@ -623,13 +623,14 @@ function bracketReady(){return !!(ST.bracket&&ST.bracket.r16&&ST.bracket.r16.som
 function koMatchups(r){
   const b=ST.bracket,s=startIdx();
   if(r===s)return firstRoundPairs();
-  // Si el sync trae los cruces reales de esta ronda (b.rmatch[r]), MANDAN: vienen en orden
-  // de slot del bracket y con el LOCAL/VISITANTE OFICIAL de football-data (no el derivado
-  // por posición del ganador anterior, que a veces sale invertido). Si no, se deriva.
-  const rm=b.rmatch&&b.rmatch[r];
-  if(rm&&rm.length){const o=[];for(let i=0;i<ROUNDS[r].size;i++){const p=rm[i]||["",""];o.push([p[0]||"",p[1]||""]);}return o;}
-  const prevW=(b.real&&b.real.w&&b.real.w[r-1])||{};const out=[];
-  for(let i=0;i<ROUNDS[r].size;i++)out.push([prevW[2*i]||"",prevW[2*i+1]||""]);
+  // KO≥1 (octavos, cuartos, semis, final): un cruce SOLO se da por establecido desde la
+  // FUENTE OFICIAL. b.rmatch[r] lo publica el sync con el LOCAL/VISITANTE oficial de
+  // football-data en cuanto los dos equipos están clasificados y el choque fijado. Mientras
+  // no exista, el cruce queda "por definir": así el 1-X-2 de la ronda no se abre hasta que
+  // el emparejamiento es oficial y NUNCA hay que voltear votos a posteriori (a diferencia
+  // de derivarlo por posición del ganador anterior, que puede salir con el local invertido).
+  const rm=b.rmatch&&b.rmatch[r];const out=[];
+  for(let i=0;i<ROUNDS[r].size;i++){const p=(rm&&rm[i])||["",""];out.push([p[0]||"",p[1]||""]);}
   return out;
 }
 // Jornadas sintéticas de eliminatoria para el 1-X-2 (mismo formato que las de grupos).
