@@ -511,6 +511,7 @@ async function loadAll(){
   ST.bracket=pj(await sget("bracket"),{closeTime:"",r16:[],real:{w:{},finalScore:""}});
   // Campos nuevos para el 1-X-2 de eliminatorias (resultados y cierres por ronda).
   if(!ST.bracket.rres)ST.bracket.rres={};
+  if(!ST.bracket.rmatch)ST.bracket.rmatch={};
   if(!ST.bracket.rclose)ST.bracket.rclose={};
   if(!ST.bracket.real)ST.bracket.real={w:{},finalScore:""};
   if(!ST.bracket.real.w)ST.bracket.real.w={};
@@ -622,6 +623,11 @@ function bracketReady(){return !!(ST.bracket&&ST.bracket.r16&&ST.bracket.r16.som
 function koMatchups(r){
   const b=ST.bracket,s=startIdx();
   if(r===s)return firstRoundPairs();
+  // Si el sync trae los cruces reales de esta ronda (b.rmatch[r]), MANDAN: vienen en orden
+  // de slot del bracket y con el LOCAL/VISITANTE OFICIAL de football-data (no el derivado
+  // por posición del ganador anterior, que a veces sale invertido). Si no, se deriva.
+  const rm=b.rmatch&&b.rmatch[r];
+  if(rm&&rm.length){const o=[];for(let i=0;i<ROUNDS[r].size;i++){const p=rm[i]||["",""];o.push([p[0]||"",p[1]||""]);}return o;}
   const prevW=(b.real&&b.real.w&&b.real.w[r-1])||{};const out=[];
   for(let i=0;i<ROUNDS[r].size;i++)out.push([prevW[2*i]||"",prevW[2*i+1]||""]);
   return out;

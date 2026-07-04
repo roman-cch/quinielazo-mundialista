@@ -209,13 +209,46 @@ exports.handler = async () => {
     r16: r16real.length ? r16real : (existingReal ? existingBr.r16 : []),
     real: { w: {}, finalScore: existingBr.real ? existingBr.real.finalScore : "" },
     rres: existingBr.rres || {},
+    // Cruces REALES de cada ronda KO≥1 (local/visitante OFICIAL de football-data), en
+    // orden de SLOT del bracket. Ver el bucle de abajo. El cliente los usa para pintar el
+    // 1-X-2 con el local/visitante correcto (koMatchups); si no está, cae al derivado.
+    rmatch: existingBr.rmatch || {},
     rclose,
   };
+  const ROUND_SIZE = { 0: 16, 1: 8, 2: 4, 3: 2, 4: 1 };
+  const teamsEs = (m) => [esTeam(m.homeTeam && m.homeTeam.name), esTeam(m.awayTeam && m.awayTeam.name)];
+  const pairKey = (a, b) => [String(a || "").trim(), String(b || "").trim()].sort().join("|");
   const winnerOf = (m) => m.score && m.score.winner === "HOME_TEAM" ? esTeam(m.homeTeam.name)
     : m.score && m.score.winner === "AWAY_TEAM" ? esTeam(m.awayTeam.name) : null;
   for (let idx = 0; idx <= 4; idx++) {
+    // Rondas KO≥1: football-data las entrega por FECHA y con SU local/visitante. Pero el
+    // cliente forma el cuadro por ESTRUCTURA (slot i = ganadores de los slots 2i, 2i+1 de
+    // la ronda anterior). Si no reordenamos, real.w[idx][i] y rres[idx][i] apuntan a otro
+    // cruce y, además, el local/visitante sale invertido respecto al oficial. Reordenamos
+    // ko[idx] al slot del bracket emparejando por el PAR de ganadores previos, conservando
+    // el local/visitante oficial de la API. La 1ª ronda (dieciseisavos) ya se reordenó por
+    // ORDER.R16 más arriba y su local/visitante ya es el oficial (b.r16), no toca.
+    if (idx >= 1) {
+      const prevW = bracket.real.w[idx - 1] || {};
+      const size = ROUND_SIZE[idx];
+      const byPair = {};
+      ko[idx].forEach((m) => { const [h, a] = teamsEs(m); if (h && a) byPair[pairKey(h, a)] = m; });
+      const ordered = new Array(size).fill(null);
+      const rm = [];
+      for (let i = 0; i < size; i++) {
+        const t1 = prevW[2 * i], t2 = prevW[2 * i + 1];
+        const m = (t1 && t2) ? byPair[pairKey(t1, t2)] : null;
+        if (m) { ordered[i] = m; const [h, a] = teamsEs(m); rm.push([h, a]); }
+        else rm.push(["", ""]);
+      }
+      ko[idx] = ordered;
+      // Solo se publica rmatch de la ronda si tiene algún cruce resuelto (equipos reales);
+      // si no, se conserva el previo (no pisar con placeholders vacíos antes de que se
+      // conozcan los ganadores de la ronda anterior).
+      if (rm.some((p) => p[0] && p[1])) bracket.rmatch[idx] = rm;
+    }
     ko[idx].forEach((m, i) => {
-      if (m.status !== "FINISHED") return;
+      if (!m || m.status !== "FINISHED") return;
       const w = winnerOf(m);
       if (w) { bracket.real.w[idx] = bracket.real.w[idx] || {}; bracket.real.w[idx][i] = w; }
       // 1-X-2 de eliminatoria: marcador a los 90 MINUTOS (mismo índice/orden que real.w
