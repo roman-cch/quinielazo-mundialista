@@ -498,7 +498,7 @@ async function slist(pre,sh=SHARE){
 }
 function pj(v,d){if(v==null)return d;try{return JSON.parse(v)}catch(e){return d}}
 
-let ST={jornadas:[],bracket:null,sidebet:null,pdata:{}};
+let ST={jornadas:[],bracket:null,sidebet:null,pdata:{},koedit:{}};
 let ME=null, MYID=null, ORG=false, openAcc={}, CURTAB="rank", RANKVIEW="total", BRROUND=0;
 // Protección de ediciones locales frente al listener en vivo de Firebase:
 //  DIRTY   = ids de jugador con cambios en memoria SIN guardar todavía.
@@ -521,6 +521,11 @@ async function loadAll(){
   if(!ST.bracket.real)ST.bracket.real={w:{},finalScore:""};
   if(!ST.bracket.real.w)ST.bracket.real.w={};
   ST.sidebet=pj(await sget("sidebet"),{results:{}});
+  // Override MANUAL y temporal del organizador para REABRIR el 1-X-2 de una ronda KO ya
+  // cerrada (p. ej. dejar completar octavos), bloqueando partidos concretos que ya se juegan.
+  // Va en una clave propia (quiniela/koedit) que el sync NO reescribe. Formato:
+  //   { "<roundIdx>": { until:"<ISO opcional>", lock:[<slots que siguen cerrados>] } }
+  ST.koedit=pj(await sget("koedit"),{})||{};
   const prev=ST.pdata||{};
   const np={};
   const keys=await slist("p:");
@@ -652,6 +657,15 @@ function koJornadas(){
     out.push({clave:"KO"+r,name:ROUNDS[r].name,ko:true,roundIdx:r,closeTime:(b.rclose[r]||""),matches});
   }
   return out;
+}
+// Reapertura MANUAL del 1-X-2 de una ronda KO (ST.koedit). Devuelve {lock:[slots]} si la
+// ronda de esa "clave" (KO<r>) está reabierta ahora mismo, o null. `lock` = partidos que,
+// aun con la ronda reabierta, siguen CERRADOS (ya se están jugando / han terminado).
+function koReopenInfo(clave){
+  const m=/^KO(\d+)$/.exec(clave||"");if(!m)return null;
+  const o=(ST.koedit||{})[m[1]];if(!o)return null;
+  if(o.until&&new Date(o.until)<new Date())return null; // caducó la reapertura
+  return {lock:Array.isArray(o.lock)?o.lock:[]};
 }
 // Puntos de 1-X-2 que un jugador saca en la ronda de eliminatoria r (para el ranking por ronda).
 function koRoundScore(id,r){const kj=koJornadas().find(j=>j.roundIdx===r);return kj?jornadaScore(id,kj).pts:0;}
@@ -797,12 +811,16 @@ function renderProns(){
   const jlist=koJ.length?ST.jornadas.concat(koJ):ST.jornadas.slice().reverse();
   let _firstOpen=false;
   jlist.forEach((j,ri)=>{
-    const closed=j.closeTime&&new Date(j.closeTime)<new Date();
+    // Reapertura manual del organizador (solo rondas KO): la ronda vuelve a estar abierta,
+    // salvo los partidos de `lockSlots`, que siguen cerrados (ya en juego / terminados).
+    const reopen=koReopenInfo(j.clave);
+    const lockSlots=reopen?reopen.lock:[];
+    const closed=(j.closeTime&&new Date(j.closeTime)<new Date())&&!reopen;
     const s=jornadaScore(ME,j);
     const autoOpen=!closed&&!_firstOpen;if(!closed)_firstOpen=true;
     const o=openAcc["pr"+j.clave]!==undefined?openAcc["pr"+j.clave]:autoOpen;
     const jDone=j.matches.filter(m=>m.result).length;
-    const meta=closed?`<span class="st st-lock">CERRADA</span> ${jDone}/${j.matches.length} jugados · ${s.pts} pts`:(j.closeTime?(`<span class="st st-edit">ABIERTA</span> cierra ${fmt(j.closeTime)}`):'<span class="st st-edit">ABIERTA</span>');
+    const meta=closed?`<span class="st st-lock">CERRADA</span> ${jDone}/${j.matches.length} jugados · ${s.pts} pts`:(reopen?'<span class="st st-edit">REABIERTA</span> (temporal) · completa tus pronósticos':(j.closeTime?(`<span class="st st-edit">ABIERTA</span> cierra ${fmt(j.closeTime)}`):'<span class="st st-edit">ABIERTA</span>'));
     h+=`<div class="acc ${o?"open":""}"><div class="h" onclick="tacc('pr${j.clave}')"><div><span class="t">${esc(j.name)}</span> <span class="meta">${meta}</span></div><span class="chev">▾</span></div><div class="b">`;
     if(closed){
       j.matches.forEach((m,idx)=>{
@@ -818,9 +836,11 @@ function renderProns(){
       j.matches.forEach((m,idx)=>{
         if(!m.home||!m.away){h+='<div class="match"><div class="mt"><span class="nm muted">Cruce por definir</span></div></div>';return;}
         const pred=getPick(ME,j.clave,idx);
-        h+=`<div class="match"><div class="mt"><span class="gr">${m.group}</span><span class="nm">${esc(m.home)} - ${esc(m.away)} ${m.exact?'<span class="star">★ exacto</span>':""}</span></div>`;
-        if(m.exact){const ps=parseScore(pred);h+=`<div class="exact"><input type="number" min="0" data-s="h" value="${ps?ps[0]:""}"><span>-</span><input type="number" min="0" data-s="a" value="${ps?ps[1]:""}"></div>`;}
-        else{h+=picksHTML(m,pred,false);}
+        const mlk=lockSlots.indexOf(idx)>=0;   // partido bloqueado dentro de una ronda reabierta
+        h+=`<div class="match"><div class="mt"><span class="gr">${m.group}</span><span class="nm">${esc(m.home)} - ${esc(m.away)} ${m.exact?'<span class="star">★ exacto</span>':""}</span>${mlk?' <span class="st st-lock">CERRADO</span>':''}</div>`;
+        if(m.exact){const ps=parseScore(pred);h+=`<div class="exact"><input type="number" min="0" data-s="h" ${mlk?'disabled':''} value="${ps?ps[0]:""}"><span>-</span><input type="number" min="0" data-s="a" ${mlk?'disabled':''} value="${ps?ps[1]:""}"></div>`;}
+        else{h+=picksHTML(m,pred,mlk);}
+        if(mlk)h+=`<div class="res" style="margin-top:4px">Tu pronóstico: <b>${esc(pred||"—")}</b>${m.result?` · Resultado: <b>${esc(m.result)}</b>`:' · <span class="muted">en juego</span>'}</div>`;
         h+='</div>';
       });
       h+=`<button class="btn" style="margin-top:10px" onclick="saveFill('${j.clave}',this)">Guardar mi quiniela</button>`;
@@ -947,7 +967,10 @@ function pkLabel(m,s){return s==="1"?esc(m.home):s==="2"?esc(m.away):"Empate";}
 function picksHTML(m,pred,closed){return '<div class="picks">'+["1","x","2"].map(s=>`<button class="pk ${pred===s?"on":""}" data-v="${s}" ${closed?"disabled":""} onclick="setPk(this)"><span class="pks">${s.toUpperCase()}</span><span class="pkt">${pkLabel(m,s)}</span></button>`).join("")+'</div>';}
 async function saveFill(clave,btn){
   const jx=ST.jornadas.find(x=>x.clave===clave)||koJornadas().find(x=>x.clave===clave);
-  if(jx&&jx.closeTime&&new Date(jx.closeTime)<new Date()){toast("Ronda cerrada: ya no se puede guardar");renderActive();return;}
+  // Si la ronda KO está REABIERTA manualmente, se permite guardar aunque su closeTime ya pasara
+  // (los partidos bloqueados van deshabilitados en el DOM, así que su pronóstico se conserva).
+  const reopenS=koReopenInfo(clave);
+  if(!reopenS&&jx&&jx.closeTime&&new Date(jx.closeTime)<new Date()){toast("Ronda cerrada: ya no se puede guardar");renderActive();return;}
   // Aviso si se rellena la quiniela de OTRO jugador (solo el organizador puede): evita
   // guardar en la columna equivocada por dejar el selector en otro nombre.
   if(ME!==MYID&&!confirm("Vas a guardar la quiniela de #"+pad(byId[ME].dorsal)+" "+byId[ME].name+", que no es tu cuenta. ¿Continuar?"))return;
