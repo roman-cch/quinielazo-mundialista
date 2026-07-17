@@ -646,10 +646,13 @@ function koMatchups(r){
 // Jornadas sintéticas de eliminatoria para el 1-X-2 (mismo formato que las de grupos).
 // Una ronda solo aparece cuando ya tiene emparejamientos formados: la primera en cuanto
 // hay cuadro; las siguientes, cuando se conocen los ganadores reales de la previa.
+// La FINAL queda FUERA del 1-X-2: ese partido se juega solo en la hoja de ruta (los 20 pts
+// del cruce y el bonus del marcador), sin quiniela de signo. KO1X2_END lo deja explícito.
+const KO1X2_END=ROUNDS.length-1;
 function koJornadas(){
   if(!bracketReady())return [];
   const b=ST.bracket,s=startIdx(),out=[];
-  for(let r=s;r<ROUNDS.length;r++){
+  for(let r=s;r<KO1X2_END;r++){
     const ms=koMatchups(r);
     if(!ms.some(m=>m[0]&&m[1]))break;
     const rres=b.rres[r]||{};
@@ -1120,7 +1123,8 @@ function renderManual(){
     <div class="kvr"><span>Rellénala <b>entera hasta la Final</b> y pulsa <b>Guardar mi cuadro</b> (o <b>Limpiar</b> para empezar de cero). Si cambias un cruce, los que dependían de él se reinician.</span><b></b></div>
     <div class="kvr"><span><b>Cierre de los cruces:</b> al empezar los <b>Dieciseisavos</b>. Después el cuadro queda en solo lectura.</span><b>auto</b></div>
     <div class="kvr"><span><b>Bonus final</b> (marcador exacto de la final): <b>sigue abierto hasta que empieza la final</b>, porque aún no se sabe quién la juega. Puedes entrar a ponerlo o cambiarlo aunque los cruces ya estén cerrados.</span><b>10/5/2</b></div>
-    <div class="kvr"><span>El <b>1‑X‑2</b> sigue por rondas: bajo la <b>Jornada 3</b> salen <b>Dieciseisavos, Octavos…</b> con el mismo formato. Cada ronda <b>cierra al empezar esa ronda</b>.</span><b>1 pt</b></div></div>
+    <div class="kvr"><span>El <b>1‑X‑2</b> sigue por rondas: bajo la <b>Jornada 3</b> salen <b>Dieciseisavos, Octavos, Cuartos y Semifinales</b> con el mismo formato. Cada ronda <b>cierra al empezar esa ronda</b>.</span><b>1 pt</b></div>
+    <div class="kvr"><span>La <b>final</b> <b>no</b> tiene quiniela 1‑X‑2: ese partido se juega <b>solo en la hoja de ruta</b> (el cruce de la final y el bonus del marcador).</span><b></b></div></div>
 
   <div class="card"><div class="subhead" style="margin-top:0">4 · Ver lo que votan los demás</div>
     <p class="muted">Mientras una jornada está <b>abierta</b>, los pronósticos de todos están <b>ocultos</b> (así nadie copia). En cuanto el plazo se cierra, se hacen <b>públicos</b> para que haya transparencia.</p>
@@ -1155,7 +1159,8 @@ function renderRules(){
   <div class="kvr"><span>Cuartos</span><b>6 pts</b></div>
   <div class="kvr"><span>Semifinales</span><b>10 pts</b></div>
   <div class="kvr"><span>Final</span><b>20 pts</b></div>
-  <div class="kvr"><span>El 1X2 sigue contando (1 pt). Sin partido de jornada ni España.</span><b></b></div>
+  <div class="kvr"><span>El 1X2 sigue contando (1 pt) hasta Semifinales. Sin partido de jornada ni España.</span><b></b></div>
+  <div class="kvr"><span>La <b>final</b> no tiene quiniela 1X2: solo puntúa en la hoja de ruta (20 pts) y el bonus.</span><b></b></div>
   <div class="subhead">Bonus final (marcador exacto)</div>
   <div class="kvr"><span>Exacto / dif / ganador</span><b>10 / 5 / 2</b></div>
   <div class="subhead">Premios individuales (al final, +10 cada uno)</div>
@@ -1178,7 +1183,7 @@ function renderOrg(){
   h+=`<div class="card"><div class="subhead" style="margin-top:0">Manual del organizador</div>
     <p class="muted" style="margin-top:0">Llega <b>solo</b> de fuentes oficiales (no tocar nada): jornadas y partidos, <b>local/visitante</b>, <b>resultados</b>, <b>cruces de eliminatoria</b> y las <b>fechas de cierre</b>.</p>
     <div class="kvr"><span>Cada jornada (grupos) se <b>cierra sola</b> al empezar su primer partido</span><b>auto</b></div>
-    <div class="kvr"><span>La eliminatoria llega <b>en el orden oficial del cuadro</b> (bracket); cada ronda del <b>1‑X‑2</b> cierra al empezar esa ronda</span><b>auto</b></div>
+    <div class="kvr"><span>La eliminatoria llega <b>en el orden oficial del cuadro</b> (bracket); cada ronda del <b>1‑X‑2</b> (hasta <b>Semifinales</b>; la final no tiene) cierra al empezar esa ronda</span><b>auto</b></div>
     <div class="kvr"><span><b>Hoja de ruta:</b> los <b>cruces</b> cierran al empezar los Dieciseisavos; el <b>bonus</b> (marcador de la final) sigue abierto hasta que empieza la <b>final</b></span><b>auto</b></div>
     <div class="kvr"><span>Al cerrarse, las jornadas y la hoja de ruta se hacen <b>públicas</b> para todos (transparencia)</span><b>auto</b></div>
     <div class="kvr"><span>Resultados y ranking se actualizan solos (pueden tardar ~1 h)</span><b>auto</b></div>
