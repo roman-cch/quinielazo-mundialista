@@ -153,6 +153,9 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--pink);bo
 .pk.on{background:linear-gradient(180deg,rgba(237,27,118,.55),rgba(138,26,208,.4));border-color:rgba(255,46,142,.7);color:#fff;box-shadow:0 0 14px rgba(237,27,118,.35),0 1px 0 rgba(255,255,255,.25) inset}
 .exact{display:flex;gap:6px;align-items:center;justify-content:flex-end}
 .exact input{width:46px;text-align:center;padding:8px 0;font-weight:800}
+/* Nombres de los equipos a los lados del marcador del bonus (cuál es el local). */
+.bonrow{flex-wrap:wrap}
+.bonteam{font-weight:800;font-size:13px;color:var(--txt)}
 .res{font-size:11px;color:var(--mut);margin-top:5px}
 .res b{color:var(--txt)}
 .chip{display:inline-block;font-size:11px;padding:2px 7px;border-radius:8px;margin-left:6px}
@@ -869,7 +872,17 @@ function renderProns(){
     const bonusClosed=finalClose&&new Date(finalClose)<new Date();
     const bs=parseScore(pd.bracket.bonus);
     const bonHint=(!bonusClosed&&brClosed)?' · <b style="color:var(--teal2)">abierto hasta la final</b>':'';
-    h+=`<div class="rndlbl">Bonus final · marcador exacto (10/5/2)${bonHint}</div><div class="exact" style="justify-content:flex-start"><input id="bonh" type="number" min="0" ${bonusClosed?"disabled":""} oninput="if(ME){DIRTY.add(ME);delete PENDING[ME]}" value="${bs?bs[0]:""}" style="width:54px"><span>-</span><input id="bona" type="number" min="0" ${bonusClosed?"disabled":""} oninput="if(ME){DIRTY.add(ME);delete PENDING[ME]}" value="${bs?bs[1]:""}" style="width:54px"></div>`;
+    // El bonus se guarda como "local-visitante" del cruce OFICIAL de la final (rmatch[4] de
+    // football-data), que es el mismo orden en el que el sync escribe real.finalScore. En
+    // cuanto se sabe quién la juega, ponemos los NOMBRES junto a cada casilla: sin ellos son
+    // dos huecos anónimos y el jugador no puede saber cuál es el local.
+    const finTeams=koMatchups(finalIdx)[0]||["",""];
+    const finSet=!!(finTeams[0]&&finTeams[1]);
+    h+=`<div class="rndlbl">Bonus final · marcador exacto (10/5/2)${bonHint}</div>`;
+    h+=`<div class="exact bonrow" style="justify-content:flex-start">${finSet?`<span class="bonteam">${esc(finTeams[0])}</span>`:""}<input id="bonh" type="number" min="0" ${bonusClosed?"disabled":""} oninput="if(ME){DIRTY.add(ME);delete PENDING[ME]}" value="${bs?bs[0]:""}" style="width:54px"><span>-</span><input id="bona" type="number" min="0" ${bonusClosed?"disabled":""} oninput="if(ME){DIRTY.add(ME);delete PENDING[ME]}" value="${bs?bs[1]:""}" style="width:54px">${finSet?`<span class="bonteam">${esc(finTeams[1])}</span>`:""}</div>`;
+    h+=`<p class="muted" style="margin:6px 0 0;font-size:12px">${finSet
+      ?`Primera casilla: <b>${esc(finTeams[0])}</b> (local) · segunda: <b>${esc(finTeams[1])}</b> (visitante), el orden oficial de la final.`
+      :'Primera casilla el <b>local</b> de la final, segunda el <b>visitante</b> (orden oficial). Los nombres saldrán aquí en cuanto se sepa quién la juega.'}</p>`;
     if(bonusClosed){
       h+='<p class="muted" style="margin-top:8px"><span class="st st-lock">CERRADO</span> Cuadro y bonus en solo lectura: la final ya ha empezado.</p>';
     }else if(brClosed){
