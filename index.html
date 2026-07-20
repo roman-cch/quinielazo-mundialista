@@ -608,7 +608,15 @@ function bracketScore(id){
 // minúsculas y con espacios colapsados) para que cuadre con lo que escribió el jugador,
 // y se da por acertado si su respuesta coincide con CUALQUIERA de los válidos.
 function normTxt(s){return (s||"").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g," ");}
-function sideHit(res,pick){const p=normTxt(pick);if(!p)return false;return String(res||"").split(",").map(normTxt).filter(Boolean).some(a=>a===p);}
+// Palabras "significativas" (≥3 letras) de un nombre ya normalizado. Sirven para casar
+// por nombre O apellido: se ignoran partículas cortas (de, del, la, van...).
+function nameWords(s){return normTxt(s).split(" ").filter(w=>w.length>=3);}
+// Un pick acierta un válido oficial si son idénticos (ya normalizados) o si COMPARTEN
+// alguna palabra significativa: así "Lamine", "Yamal" y "Lamine Yamal" aciertan todos
+// contra un oficial "Lamine Yamal", aunque el jugador solo pusiera el nombre o el apellido
+// (con o sin tildes y en minúsculas). Se comprueba contra CUALQUIERA de los válidos.
+function sideHit(res,pick){const p=normTxt(pick);if(!p)return false;const pw=nameWords(p);
+  return String(res||"").split(",").map(normTxt).filter(Boolean).some(a=>a===p||nameWords(a).some(w=>pw.includes(w)));}
 function sideScore(id){
   const res=ST.sidebet.results||{};let pts=0;
   SIDE.forEach(([k])=>{if(sideHit(res[k],sidePick(id,k)))pts+=10;});
