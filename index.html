@@ -951,6 +951,19 @@ function renderProns(){
         h+=`<div class="kvr" style="margin-top:8px"><span>Bonus final (marcador)</span><span><b>${bonShow?esc(tbonus||"—"):'<span class="muted" style="font-weight:600">se revela al empezar la final</span>'}</b></span></div>`;
         h+='</div></div>';
       }
+      // Premios individuales del jugador (transparencia): su texto TAL CUAL frente al ganador
+      // oficial, con el mismo ✓/✗ que usa el ranking. Así se ve qué escribió cada uno (nombre,
+      // apellido o completo) y si la app se lo da por bueno; el ganador oficial se muestra al
+      // lado para que la comparación sea evidente.
+      {
+        const osb=openAcc["tps"+p.id]!==undefined?openAcc["tps"+p.id]:false;
+        const spp=sideScore(p.id);
+        h+=`<div class="acc ${osb?"open":""}"><div class="h" onclick="event.stopPropagation();tacc('tps${p.id}')"><div><span class="t">◈ Premios individuales</span> <span class="meta">${spp} pts</span></div><span class="chev">▾</span></div><div class="b">`;
+        SIDE.forEach(([k,lbl])=>{const res=(ST.sidebet.results||{})[k];const pick=sidePick(p.id,k);let chip;
+          if(res)chip=sideHit(res,pick)?'<span class="chip ok">✓ 10</span>':'<span class="chip no">✗</span>';else chip='<span class="chip wait">···</span>';
+          h+=`<div class="kvr"><span>${lbl}${res?` <span class="muted" style="font-weight:600">· oficial: ${esc(res)}</span>`:''}</span><span><b>${esc(pick||"—")}</b> ${chip}</span></div>`;});
+        h+='</div></div>';
+      }
       h+='</div></div>';
     });
   }
