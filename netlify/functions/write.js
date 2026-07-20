@@ -22,6 +22,23 @@ function closedClaves(jornadasStr) {
   return set;
 }
 
+// Los premios individuales (side bet) se cierran en cuanto ARRANCA el torneo: la primera
+// jornada en cerrar. A partir de ahí ningún jugador puede tocar sus premios.
+function sideBetClosed(jornadasStr) {
+  const arr = parse(jornadasStr) || [];
+  const times = arr.map((j) => j.closeTime).filter(Boolean).map((t) => new Date(t).getTime());
+  if (!times.length) return false;
+  return Math.min(...times) < Date.now();
+}
+
+// Firma canónica de los premios de un jugador: solo las claves que puntúan, en orden fijo,
+// para comparar sin depender del orden de claves ni de "ausente vs cadena vacía".
+const SIDE_KEYS = ["joven", "balon", "bota", "defensa", "ataque"];
+function sideSig(o) {
+  const s = (o && o.sidebet) || {};
+  return SIDE_KEYS.map((k) => String(s[k] == null ? "" : s[k]).trim()).join("");
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") return json(405, { error: "Método no permitido" });
 
@@ -78,6 +95,10 @@ exports.handler = async (event) => {
           const eb = JSON.stringify((existing.bracket || {}).bonus || null);
           if (ib !== eb) return json(403, { error: "Bonus cerrado (final empezada)" });
         }
+      }
+      // Premios individuales: una vez arrancado el torneo, no se pueden modificar.
+      if (sideBetClosed(jornadasStr) && sideSig(incoming) !== sideSig(existing)) {
+        return json(403, { error: "Premios cerrados (torneo empezado)" });
       }
     }
 

@@ -622,6 +622,10 @@ function sideScore(id){
   SIDE.forEach(([k])=>{if(sideHit(res[k],sidePick(id,k)))pts+=10;});
   return pts;
 }
+// Los premios individuales se pronostican ANTES del torneo: se cierran en cuanto arranca la
+// competición (la primera jornada en cerrar) y ya no se pueden tocar. Mismo criterio en el
+// servidor (write.js) para que el bloqueo sea real, no solo de interfaz.
+function sideClosed(){const ts=ST.jornadas.map(j=>j.closeTime).filter(Boolean).map(t=>new Date(t).getTime());return ts.length?Math.min(...ts)<Date.now():false;}
 function totalScore(id){
   let pts=0,exact=0,finalp=0;
   ST.jornadas.forEach(j=>{const s=jornadaScore(id,j);pts+=s.pts;exact+=s.exact;});
@@ -991,9 +995,14 @@ function renderFill(){
     else h+='<p class="muted" style="margin-top:8px">Jornada cerrada: ya no se puede editar.</p>';
     h+='</div></div>';
   });
-  h+='<div class="card"><div class="subhead" style="margin-top:0">Mi side bet</div><p class="muted">Se resuelve al final del torneo (+10 por acierto).</p>';
-  SIDE.forEach(([k,lbl])=>{h+=`<label class="fld">${lbl}</label><input data-sbp="${k}" value="${esc(sidePick(ME,k))}">`;});
-  h+='<button class="btn alt" style="margin-top:12px" onclick="saveMySide()">Guardar mi side bet</button></div>';
+  // El side bet se cierra al empezar el torneo. Para el jugador queda en solo lectura; el
+  // organizador (ORG) mantiene la edición aquí y en su panel para corregir si hace falta.
+  const sbClosed=sideClosed()&&!ORG;
+  h+='<div class="card"><div class="subhead" style="margin-top:0">Mi side bet</div>';
+  h+=sbClosed?'<p class="muted"><span class="st st-lock">CERRADO</span> Los premios individuales se cerraron al empezar el torneo: ya no se pueden editar.</p>':'<p class="muted">Se resuelve al final del torneo (+10 por acierto).</p>';
+  SIDE.forEach(([k,lbl])=>{h+=`<label class="fld">${lbl}</label><input data-sbp="${k}" ${sbClosed?"disabled":""} value="${esc(sidePick(ME,k))}">`;});
+  if(!sbClosed)h+='<button class="btn alt" style="margin-top:12px" onclick="saveMySide()">Guardar mi side bet</button>';
+  h+='</div>';
   $("v-fill").innerHTML=h;
 }
 function setPk(btn){btn.closest(".picks").querySelectorAll(".pk").forEach(b=>b.classList.remove("on"));btn.classList.add("on");}
@@ -1021,7 +1030,9 @@ async function saveFill(clave,btn){
   });
   pd.preds[clave]=cur;const ok=await savePlayer(ME);toast(ok?"✓ Quiniela guardada":"▲ Publica la app para guardar");renderActive();
 }
-async function saveMySide(){const pd=pdataOf(ME);pd.sidebet=pd.sidebet||{};
+async function saveMySide(){
+  if(sideClosed()&&!ORG){toast("Premios cerrados: el torneo ya ha empezado");renderActive();return;}
+  const pd=pdataOf(ME);pd.sidebet=pd.sidebet||{};
   document.querySelectorAll("[data-sbp]").forEach(i=>pd.sidebet[i.dataset.sbp]=i.value.trim());
   const ok=await savePlayer(ME);toast(ok?"✓ Side bet guardado":"▲ Publica la app para guardar");}
 
