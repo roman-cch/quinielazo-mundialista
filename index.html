@@ -608,9 +608,15 @@ function bracketScore(id){
 // minúsculas y con espacios colapsados) para que cuadre con lo que escribió el jugador,
 // y se da por acertado si su respuesta coincide con CUALQUIERA de los válidos.
 function normTxt(s){return (s||"").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g," ");}
-// Palabras "significativas" (≥3 letras) de un nombre ya normalizado. Sirven para casar
-// por nombre O apellido: se ignoran partículas cortas (de, del, la, van...).
-function nameWords(s){return normTxt(s).split(" ").filter(w=>w.length>=3);}
+// Apodos equivalentes a efectos de premios: distintas formas coloquiales del MISMO jugador
+// que deben casar como si fueran la misma palabra. Cada grupo se colapsa a su primer
+// elemento (la forma canónica). Caso real: el Balón de Oro 2026 fue Rodrigo, conocido
+// también como "Rodri" — así ambos aciertan igual.
+const NAME_ALIASES=[["rodrigo","rodri"]];
+function aliasKey(w){for(const g of NAME_ALIASES)if(g.includes(w))return g[0];return w;}
+// Palabras "significativas" (≥3 letras) de un nombre ya normalizado, colapsando apodos a su
+// forma canónica. Sirven para casar por nombre O apellido: se ignoran partículas cortas.
+function nameWords(s){return normTxt(s).split(" ").filter(w=>w.length>=3).map(aliasKey);}
 // Un pick acierta un válido oficial si son idénticos (ya normalizados) o si COMPARTEN
 // alguna palabra significativa: así "Lamine", "Yamal" y "Lamine Yamal" aciertan todos
 // contra un oficial "Lamine Yamal", aunque el jugador solo pusiera el nombre o el apellido
